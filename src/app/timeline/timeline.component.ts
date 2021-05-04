@@ -6,6 +6,7 @@ import * as d3Axis from 'd3';
 import { DataService } from '../data.service';
 import { roundDecimal } from 'src/tools';
 
+
 @Component({
   selector: 'app-timeline',
   templateUrl: './timeline.component.html',
@@ -23,11 +24,9 @@ export class TimelineComponent implements OnInit {
   @Input() nom: string = "";
   @Input() nom2: string = "";
 
-  public title = 'Line Chart temp cuisine';
+  public title = 'Line Chart' +this.nom;
   public id: string ="";
   
-  /* [{timestamp : 1415365, value : 15}, {timestamp : 1415369, value : 20}]; */
-  /*this.DataServ.parse<number>(this.DataServ.str, "Noise_salon", parseFloat)*/
   
   private margin = { top: 20, right: 20, bottom: 30, left: 50 };
   private width: number = 900;
@@ -40,6 +39,7 @@ export class TimelineComponent implements OnInit {
   private data: any[] = [];
   private data2: any[] = [];
   private tooltip: any;
+
   
   constructor(private DataServ: DataService) {
     this.line = d3.line()
@@ -54,13 +54,13 @@ export class TimelineComponent implements OnInit {
 
  
   public ngOnInit(): void {
-    
+    this.title = 'Line Chart ' +this.nom;
     this.data = this.DataServ.parse<number>(this.DataServ.str, this.nom, parseFloat);
     if (this.type == "multi" && this.nom2 != "") {
       this.data2 = this.DataServ.parse<number>(this.DataServ.str, this.nom2, parseFloat);
+      this.title = 'Line Chart ' +this.nom + " et " + this.nom2;
     }
     this.id = this.type + Math.floor(Math.random() * 100).toString();
-    console.log(this.id);
   }
 
   public ngAfterViewInit() {
@@ -88,7 +88,6 @@ export class TimelineComponent implements OnInit {
   }
   
   private buildScaled() {
-    console.log('#' + this.id);
     this.svg = d3.select('#'+this.id)
     .append('g')
     .attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')');
@@ -152,7 +151,6 @@ export class TimelineComponent implements OnInit {
   }
 
   private buildFixe() {
-    console.log('#' + this.id);
     this.svg = d3.select('#'+this.id)
     .append('g')
     .attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')');
@@ -201,7 +199,7 @@ export class TimelineComponent implements OnInit {
     // Le tooltip en lui-même avec sa pointe vers le bas
     // Il faut le dimensionner en fonction du contenu
     tooltip.append("polyline")
-        .attr("points","0,0 0,40, 55,40, 60,45 65,40 120,40 120,0 0,0")
+        .attr("points","0,0 0,40, 55,40, 60,45 65,40 160,40 160,0 0,0")
         .style("fill", "#fafafa")
         .style("stroke","#3498db")
         .style("opacity","0.9")
@@ -224,7 +222,7 @@ export class TimelineComponent implements OnInit {
     // Positionnement spécifique pour le petit rond	bleu
     text.append("tspan")
         .style("fill", "#3498db")
-        .attr("dx", "-60")
+        .attr("dx", "-120")
         .attr("dy", "15")
         .text("●");
     
@@ -242,7 +240,6 @@ export class TimelineComponent implements OnInit {
   }
 
   private showInfo(event: any, d: any) {
-    console.log(this.id);
     var time: number[]=[];
     for (var objet in this.data) {
       time.push(this.data[objet].timestamp);
@@ -253,9 +250,10 @@ export class TimelineComponent implements OnInit {
       var i = d3.bisectRight(time, x0);
       var d = this.data[i].value;
       var t = this.data[i].timestamp;
-      this.tooltip.attr("transform", "translate(" + this.x(t) + "," + this.y(d) + ")");
+    this.tooltip.attr("transform", "translate(" + this.x(t) + "," + this.y(d) + ")");  
+    var date = new Date(t).toLocaleDateString("fr", {year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute : 'numeric' , second: 'numeric' } );
       d3.select('#tooltip-date'+this.id)
-        .text(t);
+        .text(date );
       d3.select('#tooltip-value'+this.id)
         .text(roundDecimal(d,3));
     
@@ -324,38 +322,3 @@ export class TimelineComponent implements OnInit {
   
 }
 
-/**    l'ancien code de construction du svg
- * private buildSvg() {
-    this.svg = d3.select('svg')
-      .append('g')
-      .attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')');
-      d3.select("svg").on("mousemove", (event: any, d: any) => this.showInfo(event, d))
-      .on("mouseleave", (event: any, d: any) => this.hideInfo(event, d));
-  }
-  private addXandYAxis() {
-    // range of data configuring
-    this.x = d3Scale.scaleTime().range([0, this.width]);
-    this.y = d3Scale.scaleLinear().range([this.height, 0]);
-    this.x.domain(d3Array.extent(this.data, (d) => d.timestamp));
-    this.y.domain(d3Array.extent(this.data, (d) => d.value));
-    // Configure the X Axis
-    this.svg.append('g')
-      .attr('transform', 'translate(0,' + this.height + ')')
-      .call(d3Axis.axisBottom(this.x));
-    // Configure the Y Axis
-    this.svg.append('g')
-      .attr('class', 'axis axis--y')
-      .call(d3Axis.axisLeft(this.y));
-  }
-
-  private drawLineAndPath() {
-    this.svg.append('path')
-      .datum(this.data)
-      .attr('class', 'line')
-      .attr('d', this.line)
-      .style('fill', 'none')
-      .style('stroke', this.color)
-      .style('stroke-width', '2px');
-  }
-
- */
