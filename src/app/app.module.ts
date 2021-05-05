@@ -6,13 +6,15 @@ import { AppComponent } from './app.component';
 import { TimelineComponent } from './timeline/timeline.component';
 import { MultitimelineComponent } from './multitimeline/multitimeline.component';
 import { FixetimelineComponent } from './fixetimeline/fixetimeline.component';
+import { BooleantimelineComponent } from './booleantimeline/booleantimeline.component';
 
 @NgModule({
   declarations: [
     AppComponent,
     TimelineComponent,
     MultitimelineComponent,
-    FixetimelineComponent
+    FixetimelineComponent,
+    BooleantimelineComponent
   ],
   imports: [
     BrowserModule,
