@@ -20,8 +20,17 @@ export class BooleantimelineComponent implements OnInit {
   @Input() nom2: string = "";
 
   public title = 'Boolean timeline';
+
   
   private margin = { top: 20, right: 20, bottom: 30, left: 50 }; //marge interne au svg 
+
+  data: any[] = this.DataServ.parse<number>(this.DataServ.str, "PC6", this.parseBool);
+  dataZoom: any[] = [...this.data];
+  idZoom: number = 1;
+  minTime: number = 0;
+  maxTime: number = 0;
+  lengthTime: number = 0;
+  
   private width: number = 0;
   private height: number = 0;
   private x: any;
@@ -64,6 +73,7 @@ export class BooleantimelineComponent implements OnInit {
       this.height = (h - this.margin.top) - this.margin.bottom;
     }
     this.callType();
+    this.buildZoom();
   }
 
   private callType() { //on appelle la bonne fonction 
@@ -83,21 +93,25 @@ export class BooleantimelineComponent implements OnInit {
     else if (s=="OFF") return 0;
     else return -1;
   }
+  }
+  private buildData(){
+    this.dataZoom.forEach((element) =>
+      {
+          this.dataZoom.push({
 
-  private buildData(){ //rajoute des données pour lisser l'affichage des données 
-    this.data.forEach((element, index) =>
-      this.data.push({
-
-        timestamp: element.timestamp -1,
-
-        value: (1+element.value)%2,
-
-        sensorId: element.sensorId
-
-    }))
-    this.data.sort(function(a: any, b: any){
+            timestamp: element.timestamp -1,
+    
+            value: (1+element.value)%2,
+    
+            sensorId: element.sensorId
+          
+          })
+    }
+    )
+    this.dataZoom.sort(function(a: any, b: any){
       return a.timestamp-b.timestamp;
     });
+
   }
 
   private buildData2(){
@@ -121,13 +135,18 @@ export class BooleantimelineComponent implements OnInit {
     this.svg = d3.select('#'+this.id)
     .append('g')
     .attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')');
+    
     d3.select('#'+this.id).on("mousemove", (event: any, d: any) => this.showInfo(event, d))
-      .on("mouseleave", (event: any, d: any) => this.hideInfo(event, d));
+    .on("mouseleave", (event: any, d: any) => this.hideInfo(event, d));
+    
+    d3.select("#booleantimeline").on("mousewheel", (event: any) => this.zoom(event));
+
+ 
     // range of data configuring
     this.x = d3Scale.scaleTime().range([0, this.width]);
     this.y = d3Scale.scaleOrdinal().range([this.height, 0]);
-    this.x.domain(d3Array.extent(this.data, (d) => d.timestamp));
-    this.y.domain(d3Array.extent([0,1]));
+    this.x.domain(d3Array.extent([min,max]));
+    this.y.domain(d3Array.extent(this.dataZoom, (d) => d.value));
     // Configure the X Axis
     this.svg.append('g')
       .attr('transform', 'translate(0,' + this.height + ')')
@@ -144,6 +163,16 @@ export class BooleantimelineComponent implements OnInit {
       .style('stroke', this.color)
       .style('stroke-width', '2px');
       this.tooltip = this.addToolTips();
+  }
+  
+  private deleteSvg(){
+    this.svg.remove();
+  }
+  
+  private buildZoom(){
+    this.minTime = this.data[0].timestamp;
+    this.maxTime = this.data[this.data.length-1].timestamp;
+    this.lengthTime = this.maxTime - this.minTime;
   }
 
   private buildMulti() { // creer une multitimeline 
@@ -178,6 +207,7 @@ export class BooleantimelineComponent implements OnInit {
      .style('fill', 'none')
      .style('stroke', this.color2)
      .style('stroke-width', '2px');
+    d3.select("#booleantimeline").on("mousewheel", (event: any) => this.zoom(event));
   }
 
 
@@ -228,15 +258,15 @@ export class BooleantimelineComponent implements OnInit {
 
   private showInfo(event: any, d: any) { // fonction qui affiche le tooltips
     var time: number[]=[];
-    for (var objet in this.data) {
-      time.push(this.data[objet].timestamp);
+    for (var objet in this.dataZoom) {
+      time.push(this.dataZoom[objet].timestamp);
      }
       this.tooltip.style("display","block");
       this.tooltip.style("opacity",100);
       var x0 = this.x.invert(event.clientX-this.margin.left).getTime();
       var i = d3.bisectRight(time, x0);
-      var d = this.data[i].value;
-      var t = this.data[i].timestamp;
+      var d = this.dataZoom[i].value;
+      var t = this.dataZoom[i].timestamp;
       this.tooltip.attr("transform", "translate(" + this.x(t) + "," + this.y(d) + ")");
       var date = new Date(t).toLocaleDateString("fr", {year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute : 'numeric' , second: 'numeric' } );
       d3.select('#tooltip-date'+this.id)
@@ -247,6 +277,59 @@ export class BooleantimelineComponent implements OnInit {
   private hideInfo(event: any, d: any) { //fonction qui cache le tooltips
     this.tooltip.style("opacity", 0);
     this.tooltip.style("display", "none");
+  }
+  private zoom(event: any){
+    let lastLengthLocalTime = this.lengthTime / Math.pow(1.5,this.idZoom);
+    let lastMinLocalTime = this.dataZoom[0].timestamp;
+    if((event.wheelDeltaY<0&&this.idZoom>1)||(event.wheelDeltaY>0&&this.idZoom<199)){
+      if(event.wheelDeltaY<0&&this.idZoom>1){
+        this.idZoom--;
+      }else if(event.wheelDeltaY>0&&this.idZoom<199){
+        this.idZoom++;
+      }
+      let posLocal: number = ((event.clientX-56<0)?0:(event.clientX>832?832:(event.clientX-56)));
+      let lengthLocalTime = this.lengthTime / Math.pow(1.5,this.idZoom);
+      let minLocalTime = lastMinLocalTime + posLocal/832 * (lastLengthLocalTime - lengthLocalTime);
+      let maxLocalTime = minLocalTime + lengthLocalTime;
+      if(this.minTime>minLocalTime){
+        minLocalTime=this.minTime;
+        maxLocalTime=minLocalTime + lengthLocalTime;
+      }
+      if(this.maxTime<maxLocalTime){
+        maxLocalTime=this.maxTime;
+        minLocalTime=maxLocalTime - lengthLocalTime;
+      }
+      let dataLocal = this.data.filter((element: any) => minLocalTime <= element.timestamp && element.timestamp <=  maxLocalTime);
+      if(dataLocal.length>0){
+        this.dataZoom =dataLocal;
+        this.buildData();
+        this.dataZoom.unshift({
+        
+          timestamp: minLocalTime,
+        
+          value: this.dataZoom[0].value,
+    
+          sensorId: this.dataZoom[0].sensorId
+        
+        });
+        this.dataZoom.push({
+        
+          timestamp: maxLocalTime,
+        
+          value: this.dataZoom[this.dataZoom.length-1].value,
+    
+          sensorId: this.dataZoom[0].sensorId
+        
+        });
+        this.deleteSvg();
+        this.buildSvg();
+        this.addXandYAxis(minLocalTime,maxLocalTime);
+        this.drawLineAndPath();
+        this.tooltip = this.addToolTips();
+      }else{
+        this.idZoom--;
+      }
+    }
   }
 
   private isMaxScaleX() { //renvoie les data avec le plus grand nombre de données 
