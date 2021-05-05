@@ -27,7 +27,11 @@ export class TimelineComponent implements OnInit {
   public title = 'Line Chart' +this.nom;
   public id: string ="";
   
-  
+  private dataZoom: any[] = [];
+  private idZoom: number = 1;
+  private minTime: number = 0;
+  private maxTime: number = 0;
+  private lengthTime: number = 0;
   private margin = { top: 20, right: 20, bottom: 30, left: 50 };
   private width: number = 900;
   private height: number = 200;
@@ -56,6 +60,7 @@ export class TimelineComponent implements OnInit {
   public ngOnInit(): void {
     this.title = 'Line Chart ' +this.nom;
     this.data = this.DataServ.parse<number>(this.DataServ.str, this.nom, parseFloat);
+    this.dataZoom = [...this.data];
     if (this.type == "multi" && this.nom2 != "") {
       this.data2 = this.DataServ.parse<number>(this.DataServ.str, this.nom2, parseFloat);
       this.title = 'Line Chart ' +this.nom + " et " + this.nom2;
@@ -77,27 +82,30 @@ export class TimelineComponent implements OnInit {
 
   private callType() {
     if (this.type == "fix") {
-      this.buildFixe();
+      this.buildFixe(this.data[0].timestamp,this.data[this.data.length-1].timestamp);
+      this.buildZoom();
     }
     if (this.type == "scaled") {
-      this.buildScaled();
+      this.buildScaled(this.data[0].timestamp,this.data[this.data.length-1].timestamp);
+      this.buildZoom();
     }
     if (this.type == "multi") {
       this.buildMulti();
     }
   }
   
-  private buildScaled() {
+  private buildScaled(min: number, max: number) {
     this.svg = d3.select('#'+this.id)
     .append('g')
     .attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')');
     d3.select('#'+this.id).on("mousemove", (event: any, d: any) => this.showInfo(event, d))
       .on("mouseleave", (event: any, d: any) => this.hideInfo(event, d));
+    d3.select("#"+this.id).on("mousewheel", (event: any) => this.zoom(event));
      // range of data configuring
      this.x = d3Scale.scaleTime().range([0, this.width]);
      this.y = d3Scale.scaleLinear().range([this.height, 0]);
-     this.x.domain(d3Array.extent(this.data, (d) => d.timestamp));
-     this.y.domain(d3Array.extent(this.data, (d) => d.value));
+     this.x.domain(d3Array.extent([min,max]));
+     this.y.domain(d3Array.extent(this.dataZoom, (d) => d.value));
      // Configure the X Axis
      this.svg.append('g')
        .attr('transform', 'translate(0,' + this.height + ')')
@@ -107,7 +115,7 @@ export class TimelineComponent implements OnInit {
        .attr('class', 'axis axis--y')
        .call(d3Axis.axisLeft(this.y));
        this.svg.append('path')
-       .datum(this.data)
+       .datum(this.dataZoom)
        .attr('class', 'line')
        .attr('d', this.line)
        .style('fill', 'none')
@@ -135,7 +143,7 @@ export class TimelineComponent implements OnInit {
       .call(d3Axis.axisLeft(this.y));
      // Configuring line path
      this.svg.append('path')
-     .datum(this.data)
+     .datum(this.dataZoom)
      .attr('class', 'line')
      .attr('d', this.line)
      .style('fill', 'none')
@@ -150,16 +158,18 @@ export class TimelineComponent implements OnInit {
      .style('stroke-width', '2px');
   }
 
-  private buildFixe() {
+  private buildFixe(min: number, max: number) {
     this.svg = d3.select('#'+this.id)
     .append('g')
     .attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')');
     d3.select('#'+this.id).on("mousemove", (event: any, d: any) => this.showInfo(event, d))
-      .on("mouseleave", (event: any, d: any) => this.hideInfo(event, d));
+    .on("mouseleave", (event: any, d: any) => this.hideInfo(event, d));
+
+    d3.select("#"+this.id).on("mousewheel", (event: any) => this.zoom(event));
      // range of data configuring
      this.x = d3Scale.scaleTime().range([0, this.width]);
      this.y = d3Scale.scaleLinear().range([this.height, 0]);
-     this.x.domain(d3Array.extent(this.data, (d) => d.timestamp));
+     this.x.domain(d3Array.extent([min,max]));
      this.y.domain(d3Array.extent([parseInt(this.maxValue),0]));
      // Configure the X Axis
      this.svg.append('g')
@@ -170,13 +180,23 @@ export class TimelineComponent implements OnInit {
        .attr('class', 'axis axis--y')
        .call(d3Axis.axisLeft(this.y));
        this.svg.append('path')
-       .datum(this.data)
+       .datum(this.dataZoom)
        .attr('class', 'line')
        .attr('d', this.line)
        .style('fill', 'none')
        .style('stroke', this.color)
          .style('stroke-width', '2px');
          this.tooltip = this.addToolTips();
+  }
+
+  private deleteSvg(){
+    this.svg.remove();
+  }
+
+  private buildZoom(){
+    this.minTime = this.data[0].timestamp;
+    this.maxTime = this.data[this.data.length-1].timestamp;
+    this.lengthTime = this.maxTime - this.minTime;
   }
 
   private addToolTips() {
@@ -316,6 +336,60 @@ export class TimelineComponent implements OnInit {
     }
     else {
       return this.data2;
+    }
+  }
+  private zoom(event: any){
+    let lastLengthLocalTime = this.lengthTime / Math.pow(1.5,this.idZoom);
+    let lastMinLocalTime = this.dataZoom[0].timestamp;
+    if((event.wheelDeltaY<0&&this.idZoom>1)||(event.wheelDeltaY>0&&this.idZoom<80)){
+      if(event.wheelDeltaY<0&&this.idZoom>1){
+        this.idZoom--;
+      }else if(event.wheelDeltaY>0&&this.idZoom<80){
+        this.idZoom++;
+      }
+      let posLocal: number = ((event.clientX-56<0)?0:(event.clientX>832?832:(event.clientX-56)));
+      let lengthLocalTime = this.lengthTime / Math.pow(1.5,this.idZoom);
+      let minLocalTime = lastMinLocalTime + posLocal/832 * (lastLengthLocalTime - lengthLocalTime);
+      let maxLocalTime = minLocalTime + lengthLocalTime;
+      if(this.minTime>minLocalTime){
+        minLocalTime=this.minTime;
+        maxLocalTime=minLocalTime + lengthLocalTime;
+      }
+      if(this.maxTime<maxLocalTime){
+        maxLocalTime=this.maxTime;
+        minLocalTime=maxLocalTime - lengthLocalTime;
+      }
+      let dataLocal = this.data.filter((element: any) => minLocalTime <= element.timestamp && element.timestamp <=  maxLocalTime);
+      console.log(lengthLocalTime);
+      if(dataLocal.length>0&&lengthLocalTime>4000){
+        this.dataZoom =dataLocal;
+        this.dataZoom.unshift({
+        
+          timestamp: minLocalTime,
+        
+          value: this.dataZoom[0].value,
+    
+          sensorId: this.dataZoom[0].sensorId
+        
+        });
+        this.dataZoom.push({
+        
+          timestamp: maxLocalTime,
+        
+          value: this.dataZoom[this.dataZoom.length-1].value,
+    
+          sensorId: this.dataZoom[0].sensorId
+        
+        });
+        this.deleteSvg();
+        if (this.type == "fix") {
+          this.buildFixe(minLocalTime,maxLocalTime);
+        }else if (this.type == "scaled") {
+          this.buildScaled(minLocalTime,maxLocalTime);
+        }
+      }else{
+        this.idZoom--;
+      }
     }
   }
   
