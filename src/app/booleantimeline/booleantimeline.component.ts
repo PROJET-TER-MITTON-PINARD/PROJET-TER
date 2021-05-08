@@ -5,6 +5,8 @@ import * as d3Array from 'd3';
 import * as d3Axis from 'd3';
 import { DataService } from '../data.service';
 import { roundDecimal } from 'src/tools';
+import { DATA } from '../data-interface';
+import { scaleDiverging } from 'd3';
 
 @Component({
   selector: 'app-booleantimeline',
@@ -24,8 +26,8 @@ export class BooleantimelineComponent implements OnInit {
   
   private margin = { top: 20, right: 20, bottom: 30, left: 50 }; //marge interne au svg 
 
-  private dataZoom: any[] = [];
-  private idZoom: number = 1;
+  private dataZoom: DATA<number>[] = [];
+  private idZoom: number = 0;
   private minTime: number = 0;
   private maxTime: number = 0;
   private lengthTime: number = 0;
@@ -37,8 +39,8 @@ export class BooleantimelineComponent implements OnInit {
   private svg: any;
   private line: d3.Line<[number, number]>; // this is line defination
   private line2: d3.Line<[number, number]>;
-  private data: any[] = [];
-  private data2: any[] = [];
+  private data: DATA<number>[] = [];
+  private data2: DATA<number>[] = [];
   private tooltip: any;
 
   public id: string ="";
@@ -136,12 +138,10 @@ export class BooleantimelineComponent implements OnInit {
     .append('g')
     .attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')');
     
-    d3.select('#'+this.id).on("mousemove", (event: any, d: any) => this.showInfo(event, d))
-    .on("mouseleave", (event: any, d: any) => this.hideInfo(event, d));
+    d3.select('#'+this.id).on("mousemove", (event: any) => this.showInfo(event))
+    .on("mouseleave", () => this.hideInfo())
+    .on("mousewheel", (event: any) => this.zoom(event));
     
-    d3.select("#"+this.id).on("mousewheel", (event: any) => this.zoom(event));
-
- 
     // range of data configuring
     this.x = d3Scale.scaleTime().range([0, this.width]);
     this.y = d3Scale.scaleOrdinal().range([this.height, 0]);
@@ -162,7 +162,7 @@ export class BooleantimelineComponent implements OnInit {
       .style('fill', 'none')
       .style('stroke', this.color)
       .style('stroke-width', '2px');
-      this.tooltip = this.addToolTips();
+      this.addToolTips();
   }
   
   private deleteSvg(){
@@ -211,17 +211,17 @@ export class BooleantimelineComponent implements OnInit {
 
 
   private addToolTips() { //creer le tooltips
-    var tooltip = this.svg.append("g")
+    this.tooltip = this.svg.append("g")
         .attr("id", "tooltip"+this.id)
         .style("display", "none");
     
     // Le cercle extérieur bleu clair
-    tooltip.append("circle")
+    this.tooltip.append("circle")
         .attr("fill", "#CCE5F6")
         .attr("r", 10);
 
     // Le cercle intérieur bleu foncé
-    tooltip.append("circle")
+    this.tooltip.append("circle")
         .attr("fill", "#3498db")
         .attr("stroke", "#fff")
         .attr("stroke-width", "1.5px")
@@ -229,7 +229,7 @@ export class BooleantimelineComponent implements OnInit {
     
     // Le tooltip en lui-même avec sa pointe vers le bas
     // Il faut le dimensionner en fonction du contenu
-    tooltip.append("polyline")
+    this.tooltip.append("polyline")
         .attr("points","0,0 0,40, 55,40, 60,45 65,40 160,40 160,0 0,0")
         .style("fill", "#fafafa")
         .style("stroke","#3498db")
@@ -239,7 +239,7 @@ export class BooleantimelineComponent implements OnInit {
     
     
     // Cet élément contiendra tout notre texte
-    var text = tooltip.append("text")
+    let text = this.tooltip.append("text")
         .style("font-size", "13px")
         .style("font-family", "Segoe UI")
         .style("color", "#333333")
@@ -251,44 +251,42 @@ export class BooleantimelineComponent implements OnInit {
       .attr("dx", "7")
       .attr("dy", "10")
       .attr("id", "tooltip-date"+this.id);
- 
-    return tooltip;
   }
 
-  private showInfo(event: any, d: any) { // fonction qui affiche le tooltips
-    var time: number[]=[];
-    for (var objet in this.dataZoom) {
-      time.push(this.dataZoom[objet].timestamp);
-     }
-      this.tooltip.style("display","block");
-      this.tooltip.style("opacity",100);
-      var x0 = this.x.invert(event.clientX-this.margin.left).getTime();
-      var i = d3.bisectRight(time, x0);
-      var d = this.dataZoom[i].value;
-      var t = this.dataZoom[i].timestamp;
-      this.tooltip.attr("transform", "translate(" + this.x(t) + "," + this.y(d) + ")");
-      var date = new Date(t).toLocaleDateString("fr", {year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute : 'numeric' , second: 'numeric' } );
-      d3.select('#tooltip-date'+this.id)
-        .text(date );
+  private showInfo(event: any) { // fonction qui affiche le tooltips
+    let time: number[]=[];
+    this.dataZoom.forEach((element) => time.push(element.timestamp));
+    this.tooltip.style("display","block");
+    this.tooltip.style("opacity",100);
+    let x0 = this.x.invert(event.clientX-this.margin.left).getTime();
+    let i = d3.bisectRight(time, x0);
+    if(i>this.dataZoom.length-1)i=this.dataZoom.length-1;
+    else if(i<0) i=0;
+    let d :number = this.dataZoom[i].value;
+    let t = this.dataZoom[i].timestamp;
+    this.tooltip.attr("transform", "translate(" + this.x(t) + "," + this.y(d) + ")");
+    let date = new Date(t).toLocaleDateString("fr", {year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute : 'numeric' , second: 'numeric' } );
+    d3.select('#tooltip-date'+this.id)
+      .text(date );
     }
     
 
-  private hideInfo(event: any, d: any) { //fonction qui cache le tooltips
-    this.tooltip.style("opacity", 0);
+  private hideInfo() { //fonction qui cache le tooltips
     this.tooltip.style("display", "none");
   }
+
   private zoom(event: any){
     let lastLengthLocalTime = this.lengthTime / Math.pow(1.5,this.idZoom);
     let lastMinLocalTime = this.dataZoom[0].timestamp;
-    if((event.wheelDeltaY<0&&this.idZoom>1)||(event.wheelDeltaY>0&&this.idZoom<80)){
-      if(event.wheelDeltaY<0&&this.idZoom>1){
+    if((event.wheelDeltaY<0&&this.idZoom>0)||event.wheelDeltaY>0){
+      if(event.wheelDeltaY<0&&this.idZoom>0){
         this.idZoom--;
-      }else if(event.wheelDeltaY>0&&this.idZoom<80){
+      }else if(event.wheelDeltaY>0){
         this.idZoom++;
       }
-      let posLocal: number = ((event.clientX-56<0)?0:(event.clientX>832?832:(event.clientX-56)));
+      let pos = this.x.invert(event.clientX-this.margin.left).getTime();
       let lengthLocalTime = this.lengthTime / Math.pow(1.5,this.idZoom);
-      let minLocalTime = lastMinLocalTime + posLocal/832 * (lastLengthLocalTime - lengthLocalTime);
+      let minLocalTime = lastMinLocalTime + (pos-lastMinLocalTime)* (lastLengthLocalTime - lengthLocalTime)/lastLengthLocalTime;
       let maxLocalTime = minLocalTime + lengthLocalTime;
       if(this.minTime>minLocalTime){
         minLocalTime=this.minTime;
@@ -299,27 +297,18 @@ export class BooleantimelineComponent implements OnInit {
         minLocalTime=maxLocalTime - lengthLocalTime;
       }
       let dataLocal = this.data.filter((element: any) => minLocalTime <= element.timestamp && element.timestamp <=  maxLocalTime);
-      console.log(lengthLocalTime);
       if(dataLocal.length>0&&lengthLocalTime>4000){
         this.dataZoom =dataLocal;
         this.buildData();
         this.dataZoom.unshift({
-        
           timestamp: minLocalTime,
-        
           value: this.dataZoom[0].value,
-    
           sensorId: this.dataZoom[0].sensorId
-        
         });
         this.dataZoom.push({
-        
           timestamp: maxLocalTime,
-        
           value: this.dataZoom[this.dataZoom.length-1].value,
-    
           sensorId: this.dataZoom[0].sensorId
-        
         });
         this.deleteSvg();
         this.buildFix(minLocalTime,maxLocalTime);
