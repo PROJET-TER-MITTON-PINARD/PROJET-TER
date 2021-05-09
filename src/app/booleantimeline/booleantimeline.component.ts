@@ -48,11 +48,13 @@ export class BooleantimelineComponent implements OnInit {
   constructor(private DataServ: DataService) {
     this.line = d3.line()
       .x((d: any) => this.x(d.timestamp))
-      .y((d: any) => this.y(d.value));
+      .y((d: any) => this.y(d.value))
+      .curve(d3.curveStepAfter);
        
-      this.line2 = d3.line()
-       .x((d: any) => this.x(d.timestamp))
-      .y((d: any) => this.y(d.value));
+    this.line2 = d3.line()
+      .x((d: any) => this.x(d.timestamp))
+      .y((d: any) => this.y(d.value))
+      .curve(d3.curveStepAfter);
   }
 
   public ngOnInit(): void {
@@ -79,13 +81,12 @@ export class BooleantimelineComponent implements OnInit {
 
   private callType() { //on appelle la bonne fonction 
     if (this.type == "fix") {
-      this.buildData();
       this.buildZoom();
-      this.buildFix(this.data[0].timestamp,this.data[this.data.length-1].timestamp);
+      this.buildFix();
+      this.addXandYAxis(this.minTime,this.maxTime);
+      this.drawLineAndPath();
     }
     if (this.type == "multi") {
-      this.buildData();
-      this.buildData2();
       this.buildMulti();
     }
   }
@@ -96,44 +97,7 @@ export class BooleantimelineComponent implements OnInit {
     else return -1;
   }
   
-  private buildData(){
-    this.dataZoom.forEach((element) =>
-      {
-          this.dataZoom.push({
-
-            timestamp: element.timestamp -1,
-    
-            value: (1+element.value)%2,
-    
-            sensorId: element.sensorId
-          
-          })
-      }
-    )
-    this.dataZoom.sort(function(a: any, b: any){
-      return a.timestamp-b.timestamp;
-    });
-
-  }
-
-  private buildData2(){
-    this.data2.forEach((element, index) =>
-      this.data2.push({
-
-        timestamp: element.timestamp -1,
-
-        value: (1+element.value)%2,
-
-        sensorId: element.sensorId
-
-    }))
-    this.data2.sort(function(a: any, b: any){
-      return a.timestamp-b.timestamp;
-    });
-  }
-
-
-  private buildFix(min: number, max:number) { // creer une timeline avec une seul donnée
+  private buildFix() { // creer une timeline avec une seul donnée
     this.svg = d3.select('#'+this.id)
     .append('g')
     .attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')');
@@ -141,21 +105,26 @@ export class BooleantimelineComponent implements OnInit {
     d3.select('#'+this.id).on("mousemove", (event: any) => this.showInfo(event))
     .on("mouseleave", () => this.hideInfo())
     .on("mousewheel", (event: any) => this.zoom(event));
-    
-    // range of data configuring
+  }
+
+  private addXandYAxis(min: number, max: number){
     this.x = d3Scale.scaleTime().range([0, this.width]);
-    this.y = d3Scale.scaleOrdinal().range([this.height, 0]);
+    this.y = d3Scale.scaleSequential().range([this.height, 0]);
     this.x.domain(d3Array.extent([min,max]));
     this.y.domain(d3Array.extent(this.dataZoom, (d) => d.value));
     // Configure the X Axis
     this.svg.append('g')
       .attr('transform', 'translate(0,' + this.height + ')')
+      .attr('class', 'xAxis')
       .call(d3Axis.axisBottom(this.x));
     // Configure the Y Axis
     this.svg.append('g')
-      .attr('class', 'axis axis--y')
+      .attr('class', 'yAxis')
       .call(d3Axis.axisLeft(this.y));
-      this.svg.append('path')
+  }
+
+  private drawLineAndPath(){
+    this.svg.append('path')
       .datum(this.dataZoom)
       .attr('class', 'line')
       .attr('d', this.line)
@@ -165,8 +134,23 @@ export class BooleantimelineComponent implements OnInit {
       this.addToolTips();
   }
   
-  private deleteSvg(){
-    this.svg.remove();
+  private updateSvg(min: number, max: number){
+    this.x.domain(d3Array.extent([min,max]));
+    this.y.domain(d3Array.extent(this.dataZoom, (d) => d.value));
+    this.svg.selectAll('.yAxis')
+    .call(d3.axisLeft(this.y));
+    this.svg.selectAll('.xAxis')
+    .call(d3.axisBottom(this.x));
+    let lineUpdate = this.svg.selectAll('.line').data([this.dataZoom], (d:any) => { return d.timestamp });
+    lineUpdate
+        .enter()
+        .append("path")
+        .attr('class', 'line')
+        .merge(lineUpdate)
+        .attr('d', this.line)
+        .style('fill', 'none')
+        .style('stroke', this.color)
+        .style('stroke-width', '2px');
   }
   
   private buildZoom(){
@@ -208,7 +192,6 @@ export class BooleantimelineComponent implements OnInit {
      .style('stroke', this.color2)
      .style('stroke-width', '2px');
   }
-
 
   private addToolTips() { //creer le tooltips
     this.tooltip = this.svg.append("g")
@@ -287,11 +270,10 @@ export class BooleantimelineComponent implements OnInit {
       let pos = this.x.invert(event.clientX-this.margin.left).getTime();
       let lengthLocalTime = this.lengthTime / Math.pow(1.5,this.idZoom);
       let minLocalTime = lastMinLocalTime + (pos-lastMinLocalTime)* (lastLengthLocalTime - lengthLocalTime)/lastLengthLocalTime;
-      let maxLocalTime = minLocalTime + lengthLocalTime;
       if(this.minTime>minLocalTime){
         minLocalTime=this.minTime;
-        maxLocalTime=minLocalTime + lengthLocalTime;
       }
+      let maxLocalTime = minLocalTime + lengthLocalTime;
       if(this.maxTime<maxLocalTime){
         maxLocalTime=this.maxTime;
         minLocalTime=maxLocalTime - lengthLocalTime;
@@ -299,10 +281,9 @@ export class BooleantimelineComponent implements OnInit {
       let dataLocal = this.data.filter((element: any) => minLocalTime <= element.timestamp && element.timestamp <=  maxLocalTime);
       if(dataLocal.length>0&&lengthLocalTime>4000){
         this.dataZoom =dataLocal;
-        this.buildData();
         this.dataZoom.unshift({
           timestamp: minLocalTime,
-          value: this.dataZoom[0].value,
+          value: (this.dataZoom[0].value+1)%2,
           sensorId: this.dataZoom[0].sensorId
         });
         this.dataZoom.push({
@@ -310,8 +291,7 @@ export class BooleantimelineComponent implements OnInit {
           value: this.dataZoom[this.dataZoom.length-1].value,
           sensorId: this.dataZoom[0].sensorId
         });
-        this.deleteSvg();
-        this.buildFix(minLocalTime,maxLocalTime);
+        this.updateSvg(minLocalTime,maxLocalTime);
       }else{
         this.idZoom--;
       }
