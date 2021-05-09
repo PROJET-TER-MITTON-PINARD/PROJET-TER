@@ -1,4 +1,4 @@
-import { Component, OnInit , Input,AfterViewInit } from '@angular/core';
+import { Component, OnInit , Input,AfterViewInit, ViewChild, ElementRef } from '@angular/core';
 import * as d3 from 'd3';
 import * as d3Scale from 'd3';
 import * as d3Array from 'd3';
@@ -20,6 +20,7 @@ export class BooleantimelineComponent implements OnInit {
   @Input() color2: string = "blue";
   @Input() nom: string = "";
   @Input() nom2: string = "";
+  @ViewChild('root') timeline!: ElementRef;
 
   public title = 'Boolean timeline';
 
@@ -69,10 +70,9 @@ export class BooleantimelineComponent implements OnInit {
   }
 
   public ngAfterViewInit() { //after le render pour recuperer les valeurs transmise au sein de la balise html 
-    var timeline = (<SVGSVGElement><unknown>document.getElementById(this.id));
-    if (timeline != null) {
-      var w = timeline.width.animVal.value;
-      var h = timeline.height.animVal.value;
+    if (this.timeline != undefined) {
+      var w = this.timeline.nativeElement.width.animVal.value;
+      var h = this.timeline.nativeElement.height.animVal.value;
       this.width = (w - this.margin.left) - this.margin.right;
       this.height = (h - this.margin.top) - this.margin.bottom;
     }
@@ -98,11 +98,11 @@ export class BooleantimelineComponent implements OnInit {
   }
   
   private buildFix() { // creer une timeline avec une seul donnée
-    this.svg = d3.select('#'+this.id)
+    this.svg = d3.select(this.timeline.nativeElement)
     .append('g')
     .attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')');
     
-    d3.select('#'+this.id).on("mousemove", (event: any) => this.showInfo(event))
+    d3.select(this.timeline.nativeElement).on("mousemove", (event: any) => this.showInfo(event))
     .on("mouseleave", () => this.hideInfo())
     .on("mousewheel", (event: any) => this.zoom(event));
   }
@@ -160,7 +160,7 @@ export class BooleantimelineComponent implements OnInit {
   }
 
   private buildMulti() { // creer une multitimeline 
-    this.svg = d3.select('#'+this.id)
+    this.svg = d3.select(this.timeline.nativeElement)
       .append('g')
       .attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')');
     // range of data configuring
