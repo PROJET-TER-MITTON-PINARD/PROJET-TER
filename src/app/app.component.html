@@ -1,7 +1,11 @@
 
-<app-timeline type="scaled" color="green" nom="Temperature_Cuisine"></app-timeline>
+<app-booleantimeline [data]=datatest></app-booleantimeline>
+<button (click)='change(1)'>Données 1</button>
+<button (click)='change(2)'>Données 2</button>
+<button (click)='change(3)' >Données 3</button>
+<!--<app-timeline [scale]="[0,50]" color="green" nom="Temperature_Cuisine"></app-timeline>
 <app-timeline type="fix" maxValue="80" color="blue" nom="Temperature_Cuisine"></app-timeline>
 <app-timeline type="multi" color="blue" color2="green" nom="Temperature_Cuisine" nom2="Temperature_Salon"></app-timeline>
-<app-booleantimeline type="fix" nom="Presence_Salon" color="blue"></app-booleantimeline>
-<app-booleantimeline type="multi" nom="PC5" nom2="PC6" color="red" color2="green"></app-booleantimeline>
 
+<app-booleantimeline type="fix" nom="PC6" color="gold"></app-booleantimeline>
+<app-booleantimeline type="multi" nom="PC5" nom2="PC6" color="red" color2="green"></app-booleantimeline>-->
