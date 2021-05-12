@@ -5,7 +5,7 @@ import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { TimelineComponent } from './timeline/timeline.component';
 
-import { BooleantimelineComponent} from './booleantimeline/booleantimeline.component'
+import { BooleantimelineComponent} from './booleantimeline/booleantimeline.component';
 
 
 @NgModule({
