@@ -270,12 +270,10 @@ export class TimelineComponent implements OnInit {
     for (var i = 0; i < this.data.length; i++){
       v1.push(this.data[i].value);
     }
-    console.log(v1);
     var v2: number[] = [];
     for (var i = 0; i < this.data2.length; i++){
       v2.push(this.data2[i].value);
     }
-    console.log(v2);
     var m1 = Math.min(...v1);
     var m2 = Math.min(...v2);
     if (m1 > m2) {
@@ -291,12 +289,10 @@ export class TimelineComponent implements OnInit {
     for (var i = 0; i < this.data.length; i++){
       v1.push(this.data[i].value);
     }
-    console.log(v1);
     var v2: number[] = [];
     for (var i = 0; i < this.data2.length; i++){
       v2.push(this.data2[i].value);
     }
-    console.log(v2);
     var m1 = Math.max(...v1);
     var m2 = Math.max(...v2);
     if (m1 > m2) {
