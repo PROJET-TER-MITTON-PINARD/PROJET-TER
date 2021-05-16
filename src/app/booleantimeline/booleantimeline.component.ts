@@ -1,4 +1,4 @@
-import { Component, OnInit , Input,AfterViewInit, ViewChild, ElementRef, SimpleChanges } from '@angular/core';
+import { Component, OnInit , Input,AfterViewInit, ViewChild, ElementRef, SimpleChanges, Output, EventEmitter } from '@angular/core';
 import * as d3 from 'd3';
 import * as d3Scale from 'd3';
 import * as d3Array from 'd3';
@@ -27,6 +27,8 @@ export class BooleantimelineComponent implements OnInit {
   
   @Input() data!: Data[];
   @ViewChild('root') timeline!: ElementRef;
+  @Input() range!: [t0: number, t1: number];
+  @Output() rangeChange = new EventEmitter<[t0:number,t1:number]>();
 
   public title = 'Boolean timeline';
 
@@ -44,13 +46,11 @@ export class BooleantimelineComponent implements OnInit {
   private svg: any;
   private line: d3.Line<[number, number]>[] = []; // this is line defination
   private tooltip: any;
-  private first:boolean = true;
   private lastDatalength:number = 0;
+  
   constructor() {
     
   }
-
-  
 
   public ngOnInit(): void {
     this.title = 'Boolean timeline';
@@ -58,21 +58,17 @@ export class BooleantimelineComponent implements OnInit {
     this.lastDatalength=this.dataZoom.length;
       this.data.forEach(
         (_element,index) => {
+          this.line[index]=d3.line()
+            .x((d: any) => this.x(d[0]))
+            .y((d: any) => this.y(d[1]))
           if(this.data[index].interpolation=="step"){
-            this.line[index]=d3.line()
-            .x((d: any) => this.x(d[0]))
-            .y((d: any) => this.y(d[1]))
-            .curve(d3.curveStepAfter);
-          }else{
-            this.line[index]=d3.line()
-            .x((d: any) => this.x(d[0]))
-            .y((d: any) => this.y(d[1]))
+            this.line[index]=this.line[index].curve(d3.curveStepAfter);
           }
       })
     
   }
 
-  public ngAfterViewInit() { //after le render pour recuperer les valeurs transmise au sein de la balise html 
+  public ngAfterViewInit(): void { //after le render pour recuperer les valeurs transmise au sein de la balise html 
     if (this.timeline != undefined) {
       var w = this.timeline.nativeElement.width.animVal.value;
       var h = this.timeline.nativeElement.height.animVal.value;
@@ -81,12 +77,12 @@ export class BooleantimelineComponent implements OnInit {
     }
     this.buildZoom();
     this.buildFix();
-    this.addXandYAxis(this.minTime,this.maxTime);
+    this.addXandYAxis();
     this.drawLineAndPath();
   }
 
-  public ngOnChanges(changes: SimpleChanges) {
-    if (changes.data) {
+  public ngOnChanges(changes: SimpleChanges): void {
+    if (!changes.data.firstChange) {
       this.updateChart();
     }
 }
@@ -101,11 +97,14 @@ export class BooleantimelineComponent implements OnInit {
     .on("mousewheel", (event: any) => this.zoom(event));
   }
 
-  private addXandYAxis(min: number, max: number){
-    this.x = d3Scale.scaleTime().range([0, this.width]);
-    this.y = d3Scale.scaleOrdinal().range(this.createRange(this.data));
-    this.x.domain(d3Array.extent([min,max]));
-    this.y.domain(this.createDomain(this.data));
+  private addXandYAxis(){
+    let info = this.createRangeDomain(this.data);
+    this.x = d3Scale.scaleTime();
+    this.x.range([0, this.width]);
+    this.x.domain([this.minTime,this.maxTime]);
+    this.y = d3Scale.scaleOrdinal();
+    this.y.range(info.range);
+    this.y.domain(info.domain);
     // Configure the X Axis
     this.svg.append('g')
       .attr('transform', 'translate(0,' + this.height + ')')
@@ -131,55 +130,41 @@ export class BooleantimelineComponent implements OnInit {
   }
   
   private updateChart(){
-    if(this.first==false){
-      this.dataZoom = [...this.data];
-      this.data.forEach(
-        (_element,index) => {
-          if(this.data[index].interpolation=="step"){
-            this.line[index]=d3.line()
-            .x((d: any) => this.x(d[0]))
-            .y((d: any) => this.y(d[1]))
-            .curve(d3.curveStepAfter);
-          }else{
-            this.line[index]=d3.line()
-            .x((d: any) => this.x(d[0]))
-            .y((d: any) => this.y(d[1]))
-          }
-      })
-      this.buildZoom();
-      this.x.domain(d3Array.extent([this.minTime,this.maxTime]));
-      this.y.domain(this.createDomain(this.data));
-      this.y.range(this.createRange(this.data));
-      this.svg.selectAll('.yAxis').call(d3.axisLeft(this.y));
-      this.svg.selectAll('.xAxis').call(d3.axisBottom(this.x));
-      let lineUpdate;
-      this.dataZoom.forEach((_element,index) => {
-        lineUpdate= this.svg.selectAll('.line'+index).data([this.dataZoom[index].values]);
-        lineUpdate
-        .enter()
-        .append("path")
-        .attr('class', 'line'+index)
-        .merge(lineUpdate)
-        .attr('d', this.line[index])
-        .style('fill', 'none')
-        .style('stroke', this.dataZoom[index].color)
-        .style('stroke-width', '2px');
-      });
-      for(let index=this.dataZoom.length; index<this.lastDatalength; index++){
-        this.svg.selectAll('.line'+index).remove();
-      }
-      this.idZoom=0;
-      this.lastDatalength=this.dataZoom.length;
-    }else{
-      this.first=false;
+    this.dataZoom = [...this.data];
+    this.data.forEach(
+      (_element,index) => {
+        this.line[index]=d3.line()
+          .x((d: any) => this.x(d[0]))
+          .y((d: any) => this.y(d[1]))
+        if(this.data[index].interpolation=="step"){
+          this.line[index]=this.line[index].curve(d3.curveStepAfter);
+        }
+    })
+    this.buildZoom();
+    let info = this.createRangeDomain(this.data);
+    this.x.domain([this.minTime,this.maxTime]);
+    this.y.domain(info.domain);
+    this.y.range(info.range);
+    this.svg.selectAll('.yAxis').call(d3.axisLeft(this.y));
+    this.svg.selectAll('.xAxis').call(d3.axisBottom(this.x));
+    this.updateLine();
+    for(let index=this.dataZoom.length; index<this.lastDatalength; index++){
+      this.svg.selectAll('.line'+index).remove();
     }
-    
-
+    this.lastDatalength=this.dataZoom.length;
   }
 
   private updateSvg(min: number, max: number){
     this.x.domain(d3Array.extent([min,max]));
     this.svg.selectAll('.xAxis').call(d3.axisBottom(this.x));
+    this.updateLine();
+  }
+
+  public updateRange(){
+    this.rangeChange.emit(this.range);
+  }
+
+  private updateLine(){
     let lineUpdate;
     this.dataZoom.forEach((_element,index) => {
       lineUpdate= this.svg.selectAll('.line'+index).data([this.dataZoom[index].values]);
@@ -199,6 +184,7 @@ export class BooleantimelineComponent implements OnInit {
     this.minTime = this.isMinScaleX(this.data);
     this.maxTime = this.isMaxScaleX(this.data);
     this.lengthTime = this.maxTime - this.minTime;
+    this.idZoom=0;
   }
 
   private addToolTips() { //creer le tooltips
@@ -294,7 +280,7 @@ export class BooleantimelineComponent implements OnInit {
           color:this.data[index].color,
           interpolation:this.data[index].interpolation
       }}) 
-      if(lengthLocalTime>4000){
+      if(lengthLocalTime>10000){
         let time: number[];
         this.dataZoom =dataLocal;
         this.data.forEach((element,index) => {
@@ -313,7 +299,7 @@ export class BooleantimelineComponent implements OnInit {
     }
   }
 
-  private isMaxScaleX(d: Data[]) { //renvoie les data avec le plus grand nombre de données 
+  private isMaxScaleX(d: Data[]) { 
     let max!: number;
     d.forEach(
       element => element.values.forEach
@@ -323,6 +309,7 @@ export class BooleantimelineComponent implements OnInit {
     )
     return max;
   }
+  
   private isMinScaleX(d: Data[]) {
     let min!: number;
     d.forEach(
@@ -334,6 +321,7 @@ export class BooleantimelineComponent implements OnInit {
     )
     return min;
   }
+  
   private isMaxScaleY(d: Data[]) {
     let max!: number;
     d.forEach(
@@ -345,6 +333,7 @@ export class BooleantimelineComponent implements OnInit {
     )
     return max;
   }
+  
   private isMinScaleY(d: Data[]) {
     let min!: number;
     d.forEach(
@@ -356,24 +345,17 @@ export class BooleantimelineComponent implements OnInit {
     )
     return min;
   }
-  private createDomain(d: Data[]){
-    let res:number[] = [];
+  
+  private createRangeDomain(d: Data[]) :{range:number[],domain:number[]}{
     let min: number = this.isMinScaleY(this.data);
     let max: number = this.isMaxScaleY(this.data);
+    let domain: number[] = [];
+    let range: number[] = [];
     for(let i:number = min;i<=max;i++){
-      res.push(i);
+      domain.push(i);
     }
-    
-    console.log(res);
-    return res;
+    let step: number = this.height/(domain.length-1);
+    domain.forEach((_element, index)=> range.unshift(step*index));
+    return {range,domain};
   }
-  private createRange(d: Data[]){
-    let res:number[] = [];
-    let da: number[] = this.createDomain(d);
-    let range: number = this.height/(da.length-1);
-    da.forEach((_element, index)=> res.unshift(range*index));
-    console.log(res);
-    return res;
-  }
-
 }
