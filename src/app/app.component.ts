@@ -13,12 +13,16 @@ export class AppComponent implements OnInit {
   
   
   public datatest: Data[] = [];
-  private dat1: Data[] = []; 
-  private dat2: Data[] = [];
-  private dat3: Data[] = [];
+  public dat1: Data[] = []; 
+  public dat2: Data[] = [];
+  public dat3: Data[] = [];
+  public dat4: Data[] = [];
+  public dat5: Data[] = [];
+  public dat6: Data[] = [];
+  public dat7: Data[] = [];
+  public range: [number,number,number]= [0,0,0];
   constructor(private DataServ: DataService) {
     this.generateData();
-    this.datatest=this.dat1;
   }
 
   private parseBool(s: string) {
@@ -29,6 +33,7 @@ export class AppComponent implements OnInit {
  
   public ngOnInit(): void {
   }
+  
   private generateData(){
     let d1: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"PC6", this.parseBool);
     let v1: [number,number][] = [];
@@ -39,17 +44,21 @@ export class AppComponent implements OnInit {
       color: "green",
       interpolation: "step"
     }
-    this.dat1.push(da1);
     let d2: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"PC5", this.parseBool);
     let v2: [number,number][] = [];
     d2.forEach(element =>v2.push([element.timestamp,element.value]));
+    let x:number = 0;
+    v2.forEach(element=> {
+      element[1]=x;
+      x=this.getRandomInt(x);
+    }
+      );
     let da2: Data = {
       label: "PC5",
       values: v2,
-      color: "blue",
-      interpolation: "step"
+      color: "purple",
+      interpolation: "linear"
     }
-    this.dat2.push(da2);
     let d3: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"Presence_Salon", this.parseBool);
     let v3: [number,number][] = [];
     d3.forEach(element =>v3.push([element.timestamp,element.value]));
@@ -59,13 +68,79 @@ export class AppComponent implements OnInit {
       color: "red",
       interpolation: "step"
     }
+
+    let d4: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"Thermostat_Temperature", parseFloat);
+    let v4: [number,number][] = [];
+    d4.forEach(element =>v4.push([element.timestamp,element.value]));
+    let da4: Data = {
+      label: "Presence_Salon",
+      values: v4,
+      color: "purple",
+      interpolation: "linear"
+    }
+
+    let d5: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"Presence_Lit", this.parseBool);
+    let v5: [number,number][] = [];
+    d5.forEach(element =>v5.push([element.timestamp,element.value]));
+    let da5: Data = {
+      label: "Presence_Salon",
+      values: v5,
+      color: "red",
+      interpolation: "step"
+    }
+
+    let d6: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"Presence_Bureau", this.parseBool);
+    let v6: [number,number][] = [];
+    d6.forEach(element =>v6.push([element.timestamp,element.value]));
+    let da6: Data = {
+      label: "Presence_Salon",
+      values: v6,
+      color: "purple",
+      interpolation: "step"
+    }
+
+    let d7: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"Presence_SDB", this.parseBool);
+    let v7: [number,number][] = [];
+    d7.forEach(element =>v7.push([element.timestamp,element.value]));
+    let da7: Data = {
+      label: "Presence_Salon",
+      values: v7,
+      color: "black",
+      interpolation: "step"
+    }
+    
+    
+    this.dat4.push(da4);
+    this.dat2.push(da1);
+    this.dat1.push(da2);
     this.dat3.push(da3);
     this.dat3.push(da1);
+    this.dat5.push(da5);
+    this.dat6.push(da6);
+    this.dat7.push(da7);
+  }
+
+  public updateRange(rangeChange: [number,number,number]){
+    this.range=rangeChange;
   }
   
   public change(i: number){
-    if(i==1) this.datatest = this.dat1;
-    if(i==2) this.datatest = this.dat2;
-    if(i==3) this.datatest = this.dat3;
+    if(i==1) this.datatest = this.dat5;
+    if(i==2) this.datatest = this.dat6;
+    if(i==3) this.datatest = this.dat7;
+  }
+
+  private getRandomInt(x:number){
+    let alea: number;
+    if(x==0){
+      return 1;
+    }else{
+      alea=Math.round(Math.random());
+      if(alea==0){
+        return x-1;
+      }else{
+        return x+1;
+      }
+    }
   }
 }

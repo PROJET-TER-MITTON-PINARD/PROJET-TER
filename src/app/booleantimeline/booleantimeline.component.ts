@@ -27,8 +27,8 @@ export class BooleantimelineComponent implements OnInit {
   
   @Input() data!: Data[];
   @ViewChild('root') timeline!: ElementRef;
-  @Input() range!: [t0: number, t1: number];
-  @Output() rangeChange = new EventEmitter<[t0:number,t1:number]>();
+  @Input() range!: [number,number,number];
+  @Output() rangeChange = new EventEmitter<[number,number,number]>();
 
   public title = 'Boolean timeline';
 
@@ -47,9 +47,12 @@ export class BooleantimelineComponent implements OnInit {
   private line: d3.Line<[number, number]>[] = []; // this is line defination
   private tooltip: any;
   private lastDatalength:number = 0;
+  private first:boolean = true;
   
-  constructor() {
-    
+  constructor() {   
+    if(this.range==undefined){
+      this.range=[0,0,0];
+    }
   }
 
   public ngOnInit(): void {
@@ -75,15 +78,37 @@ export class BooleantimelineComponent implements OnInit {
       this.width = (w - this.margin.left) - this.margin.right;
       this.height = (h - this.margin.top) - this.margin.bottom;
     }
-    this.buildZoom();
+    this.buildZoom(); 
     this.buildFix();
     this.addXandYAxis();
     this.drawLineAndPath();
   }
 
   public ngOnChanges(changes: SimpleChanges): void {
-    if (!changes.data.firstChange) {
+    if (changes.data&&!changes.data.firstChange) {
       this.updateChart();
+    }
+    if (changes.range&&!changes.range.firstChange) {
+      this.idZoom=this.range[2];
+      this.data.forEach((element,index) => {
+        this.dataZoom[index]={
+          label: this.data[index].label,
+          values: element.values.filter((element: any) => this.range[0] <= element[0] && element[0] <=  this.range[1]),
+          color:this.data[index].color,
+          interpolation:this.data[index].interpolation
+      }}) 
+      let time: number[];
+      this.data.forEach((element,index) => {
+        time=[];
+        element.values.forEach((element => time.push(element[0])));
+        let i = d3.bisectLeft(time, this.range[0])-1;
+        if(i>=0&&i<this.data[index].values.length){
+          this.dataZoom[index].values.unshift([this.range[0],(this.data[index].values[i][1])]);
+        }
+        this.dataZoom[index].values.push([this.range[1],this.dataZoom[index].values[this.dataZoom[index].values.length-1][1]]);
+      })
+      this.updateSvg(this.range[0],this.range[1]);
+
     }
 }
   
@@ -158,10 +183,6 @@ export class BooleantimelineComponent implements OnInit {
     this.x.domain(d3Array.extent([min,max]));
     this.svg.selectAll('.xAxis').call(d3.axisBottom(this.x));
     this.updateLine();
-  }
-
-  public updateRange(){
-    this.rangeChange.emit(this.range);
   }
 
   private updateLine(){
@@ -293,6 +314,7 @@ export class BooleantimelineComponent implements OnInit {
           this.dataZoom[index].values.push([maxLocalTime,this.dataZoom[index].values[this.dataZoom[index].values.length-1][1]]);
         })
         this.updateSvg(minLocalTime,maxLocalTime);
+        this.rangeChange.emit([minLocalTime,maxLocalTime,this.idZoom]);
       }else{
         this.idZoom--;
       }
