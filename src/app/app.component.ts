@@ -42,6 +42,7 @@ export class AppComponent implements OnInit {
       label: "PC6",
       values: v1,
       color: "green",
+      style: "area",
       interpolation: "step"
     }
     let d2: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"PC5", this.parseBool);
@@ -57,6 +58,7 @@ export class AppComponent implements OnInit {
       label: "PC5",
       values: v2,
       color: "purple",
+      style: "line",
       interpolation: "linear"
     }
     let d3: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"Presence_Salon", this.parseBool);
@@ -66,6 +68,7 @@ export class AppComponent implements OnInit {
       label: "Presence_Salon",
       values: v3,
       color: "red",
+      style: "line",
       interpolation: "step"
     }
 
@@ -76,6 +79,7 @@ export class AppComponent implements OnInit {
       label: "Presence_Salon",
       values: v4,
       color: "purple",
+      style: "line",
       interpolation: "linear"
     }
 
@@ -86,6 +90,7 @@ export class AppComponent implements OnInit {
       label: "Presence_Salon",
       values: v5,
       color: "red",
+      style: "line",
       interpolation: "step"
     }
 
@@ -96,6 +101,7 @@ export class AppComponent implements OnInit {
       label: "Presence_Salon",
       values: v6,
       color: "purple",
+      style: "both",
       interpolation: "step"
     }
 
@@ -106,6 +112,7 @@ export class AppComponent implements OnInit {
       label: "Presence_Salon",
       values: v7,
       color: "black",
+      style: "area",
       interpolation: "step"
     }
     

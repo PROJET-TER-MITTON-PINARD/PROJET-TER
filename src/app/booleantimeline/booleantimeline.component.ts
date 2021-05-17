@@ -11,6 +11,7 @@ export interface Data {
   label: string;
   values: [number,number][];
   color: string;
+  style: "line" | "area" | "both";
   interpolation: "linear" | "step";
 }
 
@@ -44,10 +45,10 @@ export class BooleantimelineComponent implements OnInit {
   private x: any;
   private y: any;
   private svg: any;
+  private area: d3.Area<[number, number]>[] = []; // this is line defination
   private line: d3.Line<[number, number]>[] = []; // this is line defination
   private tooltip: any;
   private lastDatalength:number = 0;
-  private first:boolean = true;
   
   constructor() {   
     if(this.range==undefined){
@@ -59,16 +60,6 @@ export class BooleantimelineComponent implements OnInit {
     this.title = 'Boolean timeline';
     this.dataZoom = [...this.data];
     this.lastDatalength=this.dataZoom.length;
-      this.data.forEach(
-        (_element,index) => {
-          this.line[index]=d3.line()
-            .x((d: any) => this.x(d[0]))
-            .y((d: any) => this.y(d[1]))
-          if(this.data[index].interpolation=="step"){
-            this.line[index]=this.line[index].curve(d3.curveStepAfter);
-          }
-      })
-    
   }
 
   public ngAfterViewInit(): void { //after le render pour recuperer les valeurs transmise au sein de la balise html 
@@ -78,6 +69,36 @@ export class BooleantimelineComponent implements OnInit {
       this.width = (w - this.margin.left) - this.margin.right;
       this.height = (h - this.margin.top) - this.margin.bottom;
     }
+    this.data.forEach(
+      (element,index) => {
+        if(element.style=="area" || element.style=="both"){
+          if(element.interpolation=="step"){
+            this.area[index]=d3.area()
+            .x((d: any) => this.x(d[0]))
+            .y0(this.height)
+            .y1((d: any) => this.y(d[1]))
+            .curve(d3.curveStepAfter);
+          }else{
+            this.area[index]=d3.area()
+            .x((d: any) => this.x(d[0]))
+            .y0(this.height)
+            .y1((d: any) => this.y(d[1]))
+          }
+        }
+        if(element.style=="line" || element.style=="both"){
+          if(element.interpolation=="step"){
+            this.line[index]=d3.line()
+            .x((d: any) => this.x(d[0]))
+            .y((d: any) => this.y(d[1]))
+            .curve(d3.curveStepAfter);
+          }else{
+            this.line[index]=d3.line()
+            .x((d: any) => this.x(d[0]))
+            .y((d: any) => this.y(d[1]))
+          }
+        }
+        
+    })
     this.buildZoom(); 
     this.buildFix();
     this.addXandYAxis();
@@ -92,10 +113,11 @@ export class BooleantimelineComponent implements OnInit {
       this.idZoom=this.range[2];
       this.data.forEach((element,index) => {
         this.dataZoom[index]={
-          label: this.data[index].label,
+          label: element.label,
           values: element.values.filter((element: any) => this.range[0] <= element[0] && element[0] <=  this.range[1]),
-          color:this.data[index].color,
-          interpolation:this.data[index].interpolation
+          color:element.color,
+          style:element.style,
+          interpolation:element.interpolation
       }}) 
       let time: number[];
       this.data.forEach((element,index) => {
@@ -119,7 +141,7 @@ export class BooleantimelineComponent implements OnInit {
     
     d3.select(this.timeline.nativeElement)/*.on("mousemove", (event: any) => this.showInfo(event))
     .on("mouseleave", () => this.hideInfo())*/
-    .on("mousewheel", (event: any) => this.zoom(event));
+    .on("wheel", (event: any) => this.zoom(event));
   }
 
   private addXandYAxis(){
@@ -143,13 +165,29 @@ export class BooleantimelineComponent implements OnInit {
 
   private drawLineAndPath(){
     this.dataZoom.forEach(
-      (element,index) => this.svg.append('path')
-        .datum(this.dataZoom[index].values)
-        .attr('class', 'line'+index)
-        .attr('d', this.line[index])
-        .style('fill', 'none')
-        .style('stroke', element.color)
-        .style('stroke-width', '2px')
+      (element,index) => {
+        if(element.style=="area" || element.style=="both"){
+          this.svg.append('path')
+          .datum(this.dataZoom[index].values)
+          .attr('class', 'area'+index)
+          .attr('d', this.area[index])
+          .attr("stroke-width", 0.1)
+          .attr('opacity', 0.3)
+          .style('fill', element.color)
+          .style('stroke', element.color)
+          .style('stroke-width', '2px')
+        }
+        if(element.style=="line" || element.style=="both"){
+          this.svg.append('path')
+          .datum(element.values)
+          .attr('class', 'line'+index)
+          .attr('d', this.line[index])
+          .style('fill', 'none')
+          .style('stroke', element.color)
+          .style('stroke-width', '2px')
+        }
+        
+      }
     )
     //this.addToolTips();
   }
@@ -157,12 +195,38 @@ export class BooleantimelineComponent implements OnInit {
   private updateChart(){
     this.dataZoom = [...this.data];
     this.data.forEach(
-      (_element,index) => {
-        this.line[index]=d3.line()
-          .x((d: any) => this.x(d[0]))
-          .y((d: any) => this.y(d[1]))
-        if(this.data[index].interpolation=="step"){
-          this.line[index]=this.line[index].curve(d3.curveStepAfter);
+      (element,index) => {
+        if(element.style=="area" || element.style=="both"){
+          if(element.interpolation=="step"){
+            this.area[index]=d3.area()
+            .x((d: any) => this.x(d[0]))
+            .y0(this.height)
+            .y1((d: any) => this.y(d[1]))
+            .curve(d3.curveStepAfter);
+          }else{
+            this.area[index]=d3.area()
+            .x((d: any) => this.x(d[0]))
+            .y0(this.height)
+            .y1((d: any) => this.y(d[1]))
+          }
+          if(element.style=="area"){
+            this.svg.selectAll('.line'+index).remove();
+          }
+        }
+        if(element.style=="line" || element.style=="both"){
+          if(element.interpolation=="step"){  
+            this.line[index]=d3.line()
+            .x((d: any) => this.x(d[0]))
+            .y((d: any) => this.y(d[1]))
+            .curve(d3.curveStepAfter);
+          }else{
+            this.line[index]=d3.line()
+            .x((d: any) => this.x(d[0]))
+            .y((d: any) => this.y(d[1]))
+          }
+          if(element.style=="line"){
+            this.svg.selectAll('.area'+index).remove();
+          }
         }
     })
     this.buildZoom();
@@ -175,6 +239,7 @@ export class BooleantimelineComponent implements OnInit {
     this.updateLine();
     for(let index=this.dataZoom.length; index<this.lastDatalength; index++){
       this.svg.selectAll('.line'+index).remove();
+      this.svg.selectAll('.area'+index).remove();
     }
     this.lastDatalength=this.dataZoom.length;
   }
@@ -187,17 +252,34 @@ export class BooleantimelineComponent implements OnInit {
 
   private updateLine(){
     let lineUpdate;
-    this.dataZoom.forEach((_element,index) => {
-      lineUpdate= this.svg.selectAll('.line'+index).data([this.dataZoom[index].values]);
-      lineUpdate
-      .enter()
-      .append("path")
-      .attr('class', 'line'+index)
-      .merge(lineUpdate)
-      .attr('d', this.line[index])
-      .style('fill', 'none')
-      .style('stroke', this.dataZoom[index].color)
-      .style('stroke-width', '2px');
+    let areaUpdate;
+    this.dataZoom.forEach((element,index) => {
+      if(element.style=="area" || element.style=="both"){
+        areaUpdate= this.svg.selectAll('.area'+index).data([this.dataZoom[index].values]);
+        areaUpdate
+        .enter()
+        .append("path")
+        .attr('class', 'area'+index)
+        .merge(areaUpdate)
+        .attr('d', this.area[index])
+        .attr("stroke-width", 0.1)
+        .attr('opacity', 0.3)
+        .style('fill', element.color)
+        .style('stroke', element.color)
+        .style('stroke-width', '2px');
+      }
+      if(element.style=="line" || element.style=="both"){
+        lineUpdate= this.svg.selectAll('.line'+index).data([this.dataZoom[index].values]);
+        lineUpdate
+        .enter()
+        .append("path")
+        .attr('class', 'line'+index)
+        .merge(lineUpdate)
+        .attr('d', this.line[index])
+        .style('fill', 'none')
+        .style('stroke', element.color)
+        .style('stroke-width', '2px')
+      }
     });
   }
   
@@ -272,14 +354,14 @@ export class BooleantimelineComponent implements OnInit {
     this.tooltip.style("display", "none");
   }
 
-  private zoom(event: any){
+  private zoom(event: WheelEvent){
     event.preventDefault();
     let lastLengthLocalTime = this.lengthTime / Math.pow(1.5,this.idZoom);
     let lastMinLocalTime = this.isMinScaleX(this.dataZoom);
-    if((event.wheelDeltaY<0&&this.idZoom>0)||event.wheelDeltaY>0){
-      if(event.wheelDeltaY<0&&this.idZoom>0){
+    if((event.deltaY>0&&this.idZoom>0)||event.deltaY<0){
+      if(event.deltaY>0&&this.idZoom>0){
         this.idZoom--;
-      }else if(event.wheelDeltaY>0){
+      }else if(event.deltaY<0){
         this.idZoom++; 
       }
       let pos = this.x.invert(event.clientX-this.margin.left).getTime();
@@ -296,10 +378,11 @@ export class BooleantimelineComponent implements OnInit {
       let dataLocal: Data[]= [];
       this.data.forEach((element,index) => {
         dataLocal[index]={
-          label: this.data[index].label,
+          label: element.label,
           values: element.values.filter((element: any) => minLocalTime <= element[0] && element[0] <=  maxLocalTime),
-          color:this.data[index].color,
-          interpolation:this.data[index].interpolation
+          color: element.color,
+          style: element.style,
+          interpolation: element.interpolation
       }}) 
       if(lengthLocalTime>10000){
         let time: number[];
