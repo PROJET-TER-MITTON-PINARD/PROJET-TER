@@ -30,7 +30,7 @@ export class AppComponent implements OnInit {
   public ngOnInit(): void {
   }
   private generateData(){
-    let d1: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"PC6", this.parseBool);
+    let d1: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"Temperature_Cuisine", parseFloat);
     let v1: [number,number][] = [];
     d1.forEach(element =>v1.push([element.timestamp,element.value]));
     let da1: Data = {
@@ -40,7 +40,7 @@ export class AppComponent implements OnInit {
       interpolation: "step"
     }
     this.dat1.push(da1);
-    let d2: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"PC5", this.parseBool);
+    let d2: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"Temperature_Salon", parseFloat);
     let v2: [number,number][] = [];
     d2.forEach(element =>v2.push([element.timestamp,element.value]));
     let da2: Data = {
@@ -50,7 +50,7 @@ export class AppComponent implements OnInit {
       interpolation: "step"
     }
     this.dat2.push(da2);
-    let d3: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"Presence_Salon", this.parseBool);
+    let d3: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"Temperature_Salon", parseFloat);
     let v3: [number,number][] = [];
     d3.forEach(element =>v3.push([element.timestamp,element.value]));
     let da3: Data = {

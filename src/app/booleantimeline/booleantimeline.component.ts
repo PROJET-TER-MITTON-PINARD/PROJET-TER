@@ -46,6 +46,8 @@ export class BooleantimelineComponent implements OnInit {
   private tooltip: any;
   private first:boolean = true;
   private lastDatalength:number = 0;
+  
+  
   constructor() {
     
   }
@@ -98,7 +100,7 @@ export class BooleantimelineComponent implements OnInit {
     
     d3.select(this.timeline.nativeElement)/*.on("mousemove", (event: any) => this.showInfo(event))
     .on("mouseleave", () => this.hideInfo())*/
-    .on("mousewheel", (event: any) => this.zoom(event));
+    .on("DOMMouseScroll", (event: any) => this.zoom(event));
   }
 
   private addXandYAxis(min: number, max: number){
@@ -147,6 +149,7 @@ export class BooleantimelineComponent implements OnInit {
           }
       })
       this.buildZoom();
+      console.log("zoooom");
       this.x.domain(d3Array.extent([this.minTime,this.maxTime]));
       this.y.domain(d3Array.extent([this.isMinScaleY(this.data),this.isMaxScaleY(this.data)]));
       this.svg.selectAll('.yAxis').call(d3.axisLeft(this.y));
@@ -266,13 +269,15 @@ export class BooleantimelineComponent implements OnInit {
     this.tooltip.style("display", "none");
   }
 
-  private zoom(event: any){
+  private zoom(event: any) {
+    console.log("zoom");
+    console.log(event);
     let lastLengthLocalTime = this.lengthTime / Math.pow(1.5,this.idZoom);
     let lastMinLocalTime = this.isMinScaleX(this.dataZoom);
-    if((event.wheelDeltaY<0&&this.idZoom>0)||event.wheelDeltaY>0){
-      if(event.wheelDeltaY<0&&this.idZoom>0){
+    if((event.detail<0&&this.idZoom>0)||event.detail>0){
+      if(event.detail<0&&this.idZoom>0){
         this.idZoom--;
-      }else if(event.wheelDeltaY>0){
+      }else if(event.detail>0){
         this.idZoom++; 
       }
       let pos = this.x.invert(event.clientX-this.margin.left).getTime();
