@@ -10,12 +10,14 @@ import { DataService } from './data.service';
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements OnInit {
+  [x: string]: any;
   
   
   public datatest: Data[] = [];
   private dat1: Data[] = []; 
   private dat2: Data[] = [];
   private dat3: Data[] = [];
+  
   constructor(private DataServ: DataService) {
     this.generateData();
     this.datatest=this.dat1;
