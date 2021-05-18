@@ -49,6 +49,7 @@ export class BooleantimelineComponent implements OnInit {
   private line: d3.Line<[number, number]>[] = []; // this is line defination
   private tooltip: any;
   private lastDatalength:number = 0;
+
   
   constructor() {   
     if(this.range==undefined){
@@ -224,6 +225,7 @@ export class BooleantimelineComponent implements OnInit {
             .x((d: any) => this.x(d[0]))
             .y((d: any) => this.y(d[1]))
           }
+
           if(element.style=="line"){
             this.svg.selectAll('.area'+index).remove();
           }
@@ -353,6 +355,7 @@ export class BooleantimelineComponent implements OnInit {
   private hideInfo() { //fonction qui cache le tooltips
     this.tooltip.style("display", "none");
   }
+
 
   private zoom(event: WheelEvent){
     event.preventDefault();

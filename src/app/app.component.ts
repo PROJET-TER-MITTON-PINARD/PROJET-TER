@@ -10,9 +10,11 @@ import { DataService } from './data.service';
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements OnInit {
+  [x: string]: any;
   
   
   public datatest: Data[] = [];
+
   public dat1: Data[] = []; 
   public dat2: Data[] = [];
   public dat3: Data[] = [];
@@ -35,7 +37,7 @@ export class AppComponent implements OnInit {
   }
   
   private generateData(){
-    let d1: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"PC6", this.parseBool);
+    let d1: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"Temperature_Cuisine", parseFloat);
     let v1: [number,number][] = [];
     d1.forEach(element =>v1.push([element.timestamp,element.value]));
     let da1: Data = {
