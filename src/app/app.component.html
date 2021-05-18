@@ -1,9 +1,16 @@
 
-
 <app-timeline [domain] = [0,29] [data]=dat1 [range]=range (rangeChange)="updateRange($event)"></app-timeline>
 <app-timeline [data]=dat2 [range]=range (rangeChange)="updateRange($event)"></app-timeline>
 <app-timeline [data]=dat3 [range]=range (rangeChange)="updateRange($event)"></app-timeline>
 <app-timeline [data]=datatest [range]=range></app-timeline>
+<button (click)='change(1)'>Données 1</button>
+<button (click)='change(2)'>Données 2</button>
+<button (click)='change(3)' >Données 3</button>
+
+<app-booleantimeline [data]=dat1 [range]=range (rangeChange)="updateRange($event)"></app-booleantimeline>
+<app-booleantimeline [data]=dat2 [range]=range (rangeChange)="updateRange($event)"></app-booleantimeline>
+<app-booleantimeline [data]=dat3 [range]=range (rangeChange)="updateRange($event)"></app-booleantimeline>
+<app-booleantimeline [data]=datatest [range]=range></app-booleantimeline>
 <button (click)='change(1)'>Données 1</button>
 <button (click)='change(2)'>Données 2</button>
 <button (click)='change(3)' >Données 3</button>
