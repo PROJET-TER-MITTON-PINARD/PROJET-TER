@@ -37,7 +37,7 @@ export class AppComponent implements OnInit {
   }
   
   private generateData(){
-    let d1: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"Temperature_Cuisine", parseFloat);
+    let d1: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"PC6", this.parseBool);
     let v1: [number,number][] = [];
     d1.forEach(element =>v1.push([element.timestamp,element.value]));
     let da1: Data = {
@@ -119,7 +119,6 @@ export class AppComponent implements OnInit {
     }
     
     
-    this.dat4.push(da4);
     this.dat2.push(da1);
     this.dat1.push(da2);
     this.dat3.push(da3);
