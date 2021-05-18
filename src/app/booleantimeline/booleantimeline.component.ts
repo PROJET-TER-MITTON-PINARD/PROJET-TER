@@ -49,6 +49,7 @@ export class BooleantimelineComponent implements OnInit {
   private line: d3.Line<[number, number]>[] = []; // this is line defination
   private tooltip: any;
   private lastDatalength:number = 0;
+  private modeToolTips: string = "normal";
 
   
   constructor() {   
@@ -140,8 +141,8 @@ export class BooleantimelineComponent implements OnInit {
     .append('g')
     .attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')');
     
-    d3.select(this.timeline.nativeElement)/*.on("mousemove", (event: any) => this.showInfo(event))
-    .on("mouseleave", () => this.hideInfo())*/
+    d3.select(this.timeline.nativeElement).on("mousemove", (event: any) => this.showInfo(event))
+    .on("mouseleave", () => this.hideInfo())
     .on("wheel", (event: any) => this.zoom(event));
   }
 
@@ -190,7 +191,7 @@ export class BooleantimelineComponent implements OnInit {
         
       }
     )
-    //this.addToolTips();
+    this.addToolTips();
   }
   
   private updateChart(){
@@ -239,6 +240,7 @@ export class BooleantimelineComponent implements OnInit {
     this.svg.selectAll('.yAxis').call(d3.axisLeft(this.y));
     this.svg.selectAll('.xAxis').call(d3.axisBottom(this.x));
     this.updateLine();
+    this.updateToolTips();
     for(let index=this.dataZoom.length; index<this.lastDatalength; index++){
       this.svg.selectAll('.line'+index).remove();
       this.svg.selectAll('.area'+index).remove();
@@ -292,7 +294,13 @@ export class BooleantimelineComponent implements OnInit {
     this.idZoom=0;
   }
 
-  private addToolTips() { //creer le tooltips
+  private updateToolTips() {
+    this.tooltip.remove("polyline");
+    this.addToolTips();
+  }
+
+  
+private addToolTips() { //creer le tooltips
     this.tooltip = this.svg.append("g")
         .attr("id", "tooltip")
         .style("display", "none");
@@ -311,45 +319,110 @@ export class BooleantimelineComponent implements OnInit {
     
     // Le tooltip en lui-même avec sa pointe vers le bas
     // Il faut le dimensionner en fonction du contenu
-    this.tooltip.append("polyline")
-        .attr("points","0,0 0,40, 55,40, 60,45 65,40 160,40 160,0 0,0")
+
+    let taille = this.dataZoom.length;
+    if (this.modeToolTips == "normal") {
+      this.tooltip.append("polyline")
+      .attr("points", "0,0 0," + (40 * taille)+", 75," + (40 * taille)+", 80," + (45 * taille)+" 85," + (40 * taille)+" 160," + (40 * taille)+" 160,0 0,0")
         .style("fill", "#fafafa")
         .style("stroke","#3498db")
         .style("opacity","0.9")
         .style("stroke-width","1")
-        .attr("transform", "translate(-60, -55)");
-    
-    
-    // Cet élément contiendra tout notre texte
-    let text = this.tooltip.append("text")
-        .style("font-size", "13px")
-        .style("font-family", "Segoe UI")
-        .style("color", "#333333")
-        .style("fill", "#333333")
-        .attr("transform", "translate(-50, -40)");
-    
-    // Element pour la date avec positionnement spécifique
-    text.append("tspan")
-      .attr("dx", "7")
-      .attr("dy", "10")
-      .attr("id", "tooltip-date");
+        .attr("transform", "translate(-80, " + (-50 * taille) + ")");
+      
+        this.dataZoom.forEach((element,index) => {
+          // Cet élément contiendra tout notre texte
+          let text = this.tooltip.append("text")
+            .style("font-size", "13px")
+            .style("font-family", "Segoe UI")
+            .style("color", element.color)
+            .style("fill", element.color)
+            .attr("transform", "translate(-80,"+(-42*(index+1))+")");
+     
+          // Element pour la date avec positionnement spécifique
+          text.append("tspan")
+            .attr("dx", "7")
+            .attr("dy", "5")
+            .attr("id", "tooltip-date1" + index);
+        
+            text.append("tspan")
+            .attr("dx", "-90")
+            .attr("dy", "15")
+            .attr("id", "tooltip-date2"+index);
+        });
+    }
+    else {
+      this.tooltip.append("polyline")
+      .attr("points", "0,"+(95+((taille-1) *40 ))+" , 0,55 , 75,55 , 80,50 , 85,55 , 160,55 , 160,"+(95+((taille-1) *40 ))+" 0,"+(95+((taille-1) *40 ))+"")
+        .style("fill", "#fafafa")
+        .style("stroke","#3498db")
+        .style("opacity","0.9")
+        .style("stroke-width","1")
+        .attr("transform", "translate(-80, " + (-50 * 1) + ")");
+      
+        this.dataZoom.forEach((element,index) => {
+          // Cet élément contiendra tout notre texte
+          let text = this.tooltip.append("text")
+            .style("font-size", "13px")
+            .style("font-family", "Segoe UI")
+            .style("color", element.color)
+            .style("fill", element.color)
+            .attr("transform", "translate(-80,"+(-30*(index+1))+")");
+     
+          // Element pour la date avec positionnement spécifique
+          text.append("tspan")
+            .attr("dx", "7")
+            .attr("dy", 50 + 70*index)
+            .attr("id", "tooltip-date1" + index);
+        
+            text.append("tspan")
+            .attr("dx", "-80")
+            .attr("dy", "20")
+            .attr("id", "tooltip-date2"+index);
+        });
+    }
   }
 
   private showInfo(event: any) { // fonction qui affiche le tooltips
-    let time: number[]=[];
-    this.dataZoom.forEach((element) => element.values.forEach((element => time.push(element[0]))));
-    this.tooltip.style("display","block");
-    this.tooltip.style("opacity",100);
-    let x0 = this.x.invert(event.clientX-this.margin.left).getTime();
-    let i = d3.bisectRight(time, x0);
-    if(i>this.dataZoom[0].values.length-1)i=this.dataZoom.length-1;
-    else if(i<0) i=0;
-    let d :number = this.dataZoom[0].values[i][1];
-    let t = this.dataZoom[0].values[i][1];
-    this.tooltip.attr("transform", "translate(" + this.x(t) + "," + this.y(d) + ")");
-    let date = new Date(t).toLocaleDateString("fr", {year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute : 'numeric' , second: 'numeric' } );
-    d3.select('#tooltip-date')
-      .text(date);
+    let time: number[] = [];
+      if (this.dataZoom[0] != undefined) {
+        this.dataZoom[0].values.forEach((element) => time.push(element[0]));
+      this.tooltip.style("display","block");
+      this.tooltip.style("opacity", 100);
+      let x0 = this.x.invert(event.clientX - this.margin.left).getTime();
+      let x = d3.bisectRight(time, x0);
+      if(x>this.dataZoom[0].values.length-1)x=this.dataZoom[0].values.length-1;
+      else if (x < 0) x = 0;
+      let d: number = this.dataZoom[0].values[x][1];
+      let t = this.dataZoom[0].values[x][0];
+      if (this.y(d) <= 40*this.dataZoom.length) {
+        if (this.modeToolTips != "inverse") {
+          this.modeToolTips = "inverse";
+          this.updateToolTips();
+        }
+      
+      } else {
+        if (this.modeToolTips != "normal") {
+          this.modeToolTips = "normal";
+          this.updateToolTips();
+        }
+      };
+
+      this.dataZoom.forEach((element, index) => {
+        let i = x;
+        if(i>this.dataZoom[index].values.length-1)i=this.dataZoom[index].values.length-1;
+        else if (i < 0) i = 0;
+        let d: number = this.dataZoom[index].values[i][1];
+        let t = this.dataZoom[index].values[i][0];
+        let date = new Date(t).toLocaleDateString("fr", { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' });
+        d3.selectAll('#tooltip-date1' + index)
+            .text(date);
+        d3.selectAll('#tooltip-date2' + index)
+            .text(roundDecimal(d,2));
+      });
+      this.tooltip.attr("transform", "translate(" + this.x(t) + "," + this.y(d) + ")");
+    }
+    
   }
     
   private hideInfo() { //fonction qui cache le tooltips
