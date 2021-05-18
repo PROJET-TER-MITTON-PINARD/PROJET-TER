@@ -44,10 +44,10 @@ export class AppComponent implements OnInit {
       label: "PC6",
       values: v1,
       color: "green",
-      style: "area",
+      style: "both",
       interpolation: "step"
     }
-    let d2: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"PC5", this.parseBool);
+    let d2: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"Temperature_Salon", parseFloat);
     let v2: [number,number][] = [];
     d2.forEach(element =>v2.push([element.timestamp,element.value]));
     let x:number = 0;
@@ -63,7 +63,7 @@ export class AppComponent implements OnInit {
       style: "line",
       interpolation: "linear"
     }
-    let d3: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"Presence_Salon", this.parseBool);
+    let d3: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"Temperature_Salon",parseFloat);
     let v3: [number,number][] = [];
     d3.forEach(element =>v3.push([element.timestamp,element.value]));
     let da3: Data = {
@@ -85,7 +85,7 @@ export class AppComponent implements OnInit {
       interpolation: "linear"
     }
 
-    let d5: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"Presence_Lit", this.parseBool);
+    let d5: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"Temperature_Chambre", parseFloat);
     let v5: [number,number][] = [];
     d5.forEach(element =>v5.push([element.timestamp,element.value]));
     let da5: Data = {
@@ -96,7 +96,7 @@ export class AppComponent implements OnInit {
       interpolation: "step"
     }
 
-    let d6: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"Presence_Bureau", this.parseBool);
+    let d6: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"Temperature_Cuisine", parseFloat);
     let v6: [number,number][] = [];
     d6.forEach(element =>v6.push([element.timestamp,element.value]));
     let da6: Data = {
@@ -107,7 +107,7 @@ export class AppComponent implements OnInit {
       interpolation: "step"
     }
 
-    let d7: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"Presence_SDB", this.parseBool);
+    let d7: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"Temperature_SDB", parseFloat);
     let v7: [number,number][] = [];
     d7.forEach(element =>v7.push([element.timestamp,element.value]));
     let da7: Data = {
