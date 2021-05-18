@@ -178,8 +178,8 @@ export class TimelineComponent implements OnInit {
     }else{
       this.first=false;
     }
-    
     this.updateToolTips();
+
   }
 
   private updateSvg(min: number, max: number){
@@ -210,7 +210,6 @@ export class TimelineComponent implements OnInit {
     this.lengthTime = this.maxTime - this.minTime;
   }
 
-
   private updateToolTips() {
     let taille = this.dataZoom.length;
     this.tooltip.remove("polyline");
@@ -236,6 +235,7 @@ export class TimelineComponent implements OnInit {
     
     // Le tooltip en lui-même avec sa pointe vers le bas
     // Il faut le dimensionner en fonction du contenu
+
     let taille = this.dataZoom.length;
     this.tooltip.append("polyline")
       .attr("points", "0,0 0," + (40 * taille)+", 75," + (40 * taille)+", 80," + (45 * taille)+" 85," + (40 * taille)+" 160," + (40 * taille)+" 160,0 0,0")
@@ -253,7 +253,7 @@ export class TimelineComponent implements OnInit {
         .style("color", element.color)
         .style("fill", element.color)
         .attr("transform", "translate(-80,"+(-42*(index+1))+")");
-    
+ 
       // Element pour la date avec positionnement spécifique
       text.append("tspan")
         .attr("dx", "7")
