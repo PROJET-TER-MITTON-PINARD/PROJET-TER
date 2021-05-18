@@ -1,4 +1,4 @@
-import { Component, OnInit , Input,AfterViewInit, ViewChild, ElementRef, SimpleChanges } from '@angular/core';
+import { Component, OnInit , Input,AfterViewInit, ViewChild, ElementRef, SimpleChanges, Output, EventEmitter } from '@angular/core';
 import * as d3 from 'd3';
 import * as d3Scale from 'd3';
 import * as d3Array from 'd3';
@@ -11,6 +11,7 @@ export interface Data {
   label: string;
   values: [number,number][];
   color: string;
+  style: "line" | "area" | "both";
   interpolation: "linear" | "step";
 }
 
@@ -27,6 +28,8 @@ export class BooleantimelineComponent implements OnInit {
   
   @Input() data!: Data[];
   @ViewChild('root') timeline!: ElementRef;
+  @Input() range!: [number,number,number];
+  @Output() rangeChange = new EventEmitter<[number,number,number]>();
 
   public title = 'Boolean timeline';
 
@@ -42,23 +45,48 @@ export class BooleantimelineComponent implements OnInit {
   private x: any;
   private y: any;
   private svg: any;
+  private area: d3.Area<[number, number]>[] = []; // this is line defination
   private line: d3.Line<[number, number]>[] = []; // this is line defination
   private tooltip: any;
-  private first:boolean = true;
   private lastDatalength:number = 0;
-  constructor() {
-    
-  }
-
   
+  constructor() {   
+    if(this.range==undefined){
+      this.range=[0,0,0];
+    }
+  }
 
   public ngOnInit(): void {
     this.title = 'Boolean timeline';
     this.dataZoom = [...this.data];
     this.lastDatalength=this.dataZoom.length;
-      this.data.forEach(
-        (_element,index) => {
-          if(this.data[index].interpolation=="step"){
+  }
+
+  public ngAfterViewInit(): void { //after le render pour recuperer les valeurs transmise au sein de la balise html 
+    if (this.timeline != undefined) {
+      var w = this.timeline.nativeElement.width.animVal.value;
+      var h = this.timeline.nativeElement.height.animVal.value;
+      this.width = (w - this.margin.left) - this.margin.right;
+      this.height = (h - this.margin.top) - this.margin.bottom;
+    }
+    this.data.forEach(
+      (element,index) => {
+        if(element.style=="area" || element.style=="both"){
+          if(element.interpolation=="step"){
+            this.area[index]=d3.area()
+            .x((d: any) => this.x(d[0]))
+            .y0(this.height)
+            .y1((d: any) => this.y(d[1]))
+            .curve(d3.curveStepAfter);
+          }else{
+            this.area[index]=d3.area()
+            .x((d: any) => this.x(d[0]))
+            .y0(this.height)
+            .y1((d: any) => this.y(d[1]))
+          }
+        }
+        if(element.style=="line" || element.style=="both"){
+          if(element.interpolation=="step"){
             this.line[index]=d3.line()
             .x((d: any) => this.x(d[0]))
             .y((d: any) => this.y(d[1]))
@@ -68,26 +96,41 @@ export class BooleantimelineComponent implements OnInit {
             .x((d: any) => this.x(d[0]))
             .y((d: any) => this.y(d[1]))
           }
-      })
-    
-  }
-
-  public ngAfterViewInit() { //after le render pour recuperer les valeurs transmise au sein de la balise html 
-    if (this.timeline != undefined) {
-      var w = this.timeline.nativeElement.width.animVal.value;
-      var h = this.timeline.nativeElement.height.animVal.value;
-      this.width = (w - this.margin.left) - this.margin.right;
-      this.height = (h - this.margin.top) - this.margin.bottom;
-    }
-    this.buildZoom();
+        }
+        
+    })
+    this.buildZoom(); 
     this.buildFix();
-    this.addXandYAxis(this.minTime,this.maxTime);
+    this.addXandYAxis();
     this.drawLineAndPath();
   }
 
-  public ngOnChanges(changes: SimpleChanges) {
-    if (changes.data) {
+  public ngOnChanges(changes: SimpleChanges): void {
+    if (changes.data&&!changes.data.firstChange) {
       this.updateChart();
+    }
+    if (changes.range&&!changes.range.firstChange) {
+      this.idZoom=this.range[2];
+      this.data.forEach((element,index) => {
+        this.dataZoom[index]={
+          label: element.label,
+          values: element.values.filter((element: any) => this.range[0] <= element[0] && element[0] <=  this.range[1]),
+          color:element.color,
+          style:element.style,
+          interpolation:element.interpolation
+      }}) 
+      let time: number[];
+      this.data.forEach((element,index) => {
+        time=[];
+        element.values.forEach((element => time.push(element[0])));
+        let i = d3.bisectLeft(time, this.range[0])-1;
+        if(i>=0&&i<this.data[index].values.length){
+          this.dataZoom[index].values.unshift([this.range[0],(this.data[index].values[i][1])]);
+        }
+        this.dataZoom[index].values.push([this.range[1],this.dataZoom[index].values[this.dataZoom[index].values.length-1][1]]);
+      })
+      this.updateSvg(this.range[0],this.range[1]);
+
     }
 }
   
@@ -98,14 +141,17 @@ export class BooleantimelineComponent implements OnInit {
     
     d3.select(this.timeline.nativeElement)/*.on("mousemove", (event: any) => this.showInfo(event))
     .on("mouseleave", () => this.hideInfo())*/
-    .on("mousewheel", (event: any) => this.zoom(event));
+    .on("wheel", (event: any) => this.zoom(event));
   }
 
-  private addXandYAxis(min: number, max: number){
-    this.x = d3Scale.scaleTime().range([0, this.width]);
-    this.y = d3Scale.scaleOrdinal().range([this.height, 0]);
-    this.x.domain(d3Array.extent([min,max]));
-    this.y.domain(d3Array.extent([this.isMinScaleY(this.data),this.isMaxScaleY(this.data)]));
+  private addXandYAxis(){
+    let info = this.createRangeDomain(this.data);
+    this.x = d3Scale.scaleTime();
+    this.x.range([0, this.width]);
+    this.x.domain([this.minTime,this.maxTime]);
+    this.y = d3Scale.scaleOrdinal();
+    this.y.range(info.range);
+    this.y.domain(info.domain);
     // Configure the X Axis
     this.svg.append('g')
       .attr('transform', 'translate(0,' + this.height + ')')
@@ -119,23 +165,56 @@ export class BooleantimelineComponent implements OnInit {
 
   private drawLineAndPath(){
     this.dataZoom.forEach(
-      (element,index) => this.svg.append('path')
-        .datum(this.dataZoom[index].values)
-        .attr('class', 'line'+index)
-        .attr('d', this.line[index])
-        .style('fill', 'none')
-        .style('stroke', element.color)
-        .style('stroke-width', '2px')
+      (element,index) => {
+        if(element.style=="area" || element.style=="both"){
+          this.svg.append('path')
+          .datum(this.dataZoom[index].values)
+          .attr('class', 'area'+index)
+          .attr('d', this.area[index])
+          .attr("stroke-width", 0.1)
+          .attr('opacity', 0.3)
+          .style('fill', element.color)
+          .style('stroke', element.color)
+          .style('stroke-width', '2px')
+        }
+        if(element.style=="line" || element.style=="both"){
+          this.svg.append('path')
+          .datum(element.values)
+          .attr('class', 'line'+index)
+          .attr('d', this.line[index])
+          .style('fill', 'none')
+          .style('stroke', element.color)
+          .style('stroke-width', '2px')
+        }
+        
+      }
     )
     //this.addToolTips();
   }
   
   private updateChart(){
-    if(this.first==false){
-      this.dataZoom = [...this.data];
-      this.data.forEach(
-        (_element,index) => {
-          if(this.data[index].interpolation=="step"){
+    this.dataZoom = [...this.data];
+    this.data.forEach(
+      (element,index) => {
+        if(element.style=="area" || element.style=="both"){
+          if(element.interpolation=="step"){
+            this.area[index]=d3.area()
+            .x((d: any) => this.x(d[0]))
+            .y0(this.height)
+            .y1((d: any) => this.y(d[1]))
+            .curve(d3.curveStepAfter);
+          }else{
+            this.area[index]=d3.area()
+            .x((d: any) => this.x(d[0]))
+            .y0(this.height)
+            .y1((d: any) => this.y(d[1]))
+          }
+          if(element.style=="area"){
+            this.svg.selectAll('.line'+index).remove();
+          }
+        }
+        if(element.style=="line" || element.style=="both"){
+          if(element.interpolation=="step"){  
             this.line[index]=d3.line()
             .x((d: any) => this.x(d[0]))
             .y((d: any) => this.y(d[1]))
@@ -145,14 +224,51 @@ export class BooleantimelineComponent implements OnInit {
             .x((d: any) => this.x(d[0]))
             .y((d: any) => this.y(d[1]))
           }
-      })
-      this.buildZoom();
-      this.x.domain(d3Array.extent([this.minTime,this.maxTime]));
-      this.y.domain(d3Array.extent([this.isMinScaleY(this.data),this.isMaxScaleY(this.data)]));
-      this.svg.selectAll('.yAxis').call(d3.axisLeft(this.y));
-      this.svg.selectAll('.xAxis').call(d3.axisBottom(this.x));
-      let lineUpdate;
-      this.dataZoom.forEach((_element,index) => {
+          if(element.style=="line"){
+            this.svg.selectAll('.area'+index).remove();
+          }
+        }
+    })
+    this.buildZoom();
+    let info = this.createRangeDomain(this.data);
+    this.x.domain([this.minTime,this.maxTime]);
+    this.y.domain(info.domain);
+    this.y.range(info.range);
+    this.svg.selectAll('.yAxis').call(d3.axisLeft(this.y));
+    this.svg.selectAll('.xAxis').call(d3.axisBottom(this.x));
+    this.updateLine();
+    for(let index=this.dataZoom.length; index<this.lastDatalength; index++){
+      this.svg.selectAll('.line'+index).remove();
+      this.svg.selectAll('.area'+index).remove();
+    }
+    this.lastDatalength=this.dataZoom.length;
+  }
+
+  private updateSvg(min: number, max: number){
+    this.x.domain(d3Array.extent([min,max]));
+    this.svg.selectAll('.xAxis').call(d3.axisBottom(this.x));
+    this.updateLine();
+  }
+
+  private updateLine(){
+    let lineUpdate;
+    let areaUpdate;
+    this.dataZoom.forEach((element,index) => {
+      if(element.style=="area" || element.style=="both"){
+        areaUpdate= this.svg.selectAll('.area'+index).data([this.dataZoom[index].values]);
+        areaUpdate
+        .enter()
+        .append("path")
+        .attr('class', 'area'+index)
+        .merge(areaUpdate)
+        .attr('d', this.area[index])
+        .attr("stroke-width", 0.1)
+        .attr('opacity', 0.3)
+        .style('fill', element.color)
+        .style('stroke', element.color)
+        .style('stroke-width', '2px');
+      }
+      if(element.style=="line" || element.style=="both"){
         lineUpdate= this.svg.selectAll('.line'+index).data([this.dataZoom[index].values]);
         lineUpdate
         .enter()
@@ -161,38 +277,9 @@ export class BooleantimelineComponent implements OnInit {
         .merge(lineUpdate)
         .attr('d', this.line[index])
         .style('fill', 'none')
-        .style('stroke', this.dataZoom[index].color)
-        .style('stroke-width', '2px');
-      });
-      for(let index=this.dataZoom.length; index<this.lastDatalength; index++){
-        this.svg.selectAll('.line'+index).remove();
+        .style('stroke', element.color)
+        .style('stroke-width', '2px')
       }
-      this.idZoom=1;
-      this.lastDatalength=this.dataZoom.length;
-    }else{
-      this.first=false;
-    }
-    
-
-  }
-
-  private updateSvg(min: number, max: number){
-    this.x.domain(d3Array.extent([min,max]));
-    this.y.domain(d3Array.extent([this.isMinScaleY(this.dataZoom),this.isMaxScaleY(this.dataZoom)]));
-    this.svg.selectAll('.yAxis').call(d3.axisLeft(this.y));
-    this.svg.selectAll('.xAxis').call(d3.axisBottom(this.x));
-    let lineUpdate;
-    this.dataZoom.forEach((_element,index) => {
-      lineUpdate= this.svg.selectAll('.line'+index).data([this.dataZoom[index].values]);
-      lineUpdate
-      .enter()
-      .append("path")
-      .attr('class', 'line'+index)
-      .merge(lineUpdate)
-      .attr('d', this.line[index])
-      .style('fill', 'none')
-      .style('stroke', this.dataZoom[index].color)
-      .style('stroke-width', '2px');
     });
   }
   
@@ -200,6 +287,7 @@ export class BooleantimelineComponent implements OnInit {
     this.minTime = this.isMinScaleX(this.data);
     this.maxTime = this.isMaxScaleX(this.data);
     this.lengthTime = this.maxTime - this.minTime;
+    this.idZoom=0;
   }
 
   private addToolTips() { //creer le tooltips
@@ -266,13 +354,14 @@ export class BooleantimelineComponent implements OnInit {
     this.tooltip.style("display", "none");
   }
 
-  private zoom(event: any){
+  private zoom(event: WheelEvent){
+    event.preventDefault();
     let lastLengthLocalTime = this.lengthTime / Math.pow(1.5,this.idZoom);
     let lastMinLocalTime = this.isMinScaleX(this.dataZoom);
-    if((event.wheelDeltaY<0&&this.idZoom>0)||event.wheelDeltaY>0){
-      if(event.wheelDeltaY<0&&this.idZoom>0){
+    if((event.deltaY>0&&this.idZoom>0)||event.deltaY<0){
+      if(event.deltaY>0&&this.idZoom>0){
         this.idZoom--;
-      }else if(event.wheelDeltaY>0){
+      }else if(event.deltaY<0){
         this.idZoom++; 
       }
       let pos = this.x.invert(event.clientX-this.margin.left).getTime();
@@ -289,26 +378,33 @@ export class BooleantimelineComponent implements OnInit {
       let dataLocal: Data[]= [];
       this.data.forEach((element,index) => {
         dataLocal[index]={
-          label: this.data[index].label,
+          label: element.label,
           values: element.values.filter((element: any) => minLocalTime <= element[0] && element[0] <=  maxLocalTime),
-          color:this.data[index].color,
-          interpolation:this.data[index].interpolation
+          color: element.color,
+          style: element.style,
+          interpolation: element.interpolation
       }}) 
-      
-      if(dataLocal[0].values.length>0&&lengthLocalTime>4000){
+      if(lengthLocalTime>10000){
+        let time: number[];
         this.dataZoom =dataLocal;
-        this.dataZoom.forEach((element,index) => {
-          this.dataZoom[index].values.unshift([minLocalTime,(this.dataZoom[index].values[0][1]+1)%2]);
+        this.data.forEach((element,index) => {
+          time=[];
+          element.values.forEach((element => time.push(element[0])));
+          let i = d3.bisectLeft(time, minLocalTime)-1;
+          if(i>=0&&i<this.data[index].values.length){
+            this.dataZoom[index].values.unshift([minLocalTime,(this.data[index].values[i][1])]);
+          }
           this.dataZoom[index].values.push([maxLocalTime,this.dataZoom[index].values[this.dataZoom[index].values.length-1][1]]);
         })
         this.updateSvg(minLocalTime,maxLocalTime);
+        this.rangeChange.emit([minLocalTime,maxLocalTime,this.idZoom]);
       }else{
         this.idZoom--;
       }
     }
   }
 
-  private isMaxScaleX(d: Data[]) { //renvoie les data avec le plus grand nombre de données 
+  private isMaxScaleX(d: Data[]) { 
     let max!: number;
     d.forEach(
       element => element.values.forEach
@@ -318,6 +414,7 @@ export class BooleantimelineComponent implements OnInit {
     )
     return max;
   }
+  
   private isMinScaleX(d: Data[]) {
     let min!: number;
     d.forEach(
@@ -329,6 +426,7 @@ export class BooleantimelineComponent implements OnInit {
     )
     return min;
   }
+  
   private isMaxScaleY(d: Data[]) {
     let max!: number;
     d.forEach(
@@ -340,6 +438,7 @@ export class BooleantimelineComponent implements OnInit {
     )
     return max;
   }
+  
   private isMinScaleY(d: Data[]) {
     let min!: number;
     d.forEach(
@@ -351,5 +450,17 @@ export class BooleantimelineComponent implements OnInit {
     )
     return min;
   }
-
+  
+  private createRangeDomain(d: Data[]) :{range:number[],domain:number[]}{
+    let min: number = this.isMinScaleY(this.data);
+    let max: number = this.isMaxScaleY(this.data);
+    let domain: number[] = [];
+    let range: number[] = [];
+    for(let i:number = min;i<=max;i++){
+      domain.push(i);
+    }
+    let step: number = this.height/(domain.length-1);
+    domain.forEach((_element, index)=> range.unshift(step*index));
+    return {range,domain};
+  }
 }

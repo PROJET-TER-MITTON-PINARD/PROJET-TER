@@ -1,9 +1,13 @@
 
-<app-booleantimeline [data]=datatest></app-booleantimeline>
+<app-booleantimeline [data]=dat1 [range]=range (rangeChange)="updateRange($event)"></app-booleantimeline>
+<app-booleantimeline [data]=dat2 [range]=range (rangeChange)="updateRange($event)"></app-booleantimeline>
+<app-booleantimeline [data]=dat3 [range]=range (rangeChange)="updateRange($event)"></app-booleantimeline>
+<app-booleantimeline [data]=datatest [range]=range></app-booleantimeline>
 <button (click)='change(1)'>Données 1</button>
 <button (click)='change(2)'>Données 2</button>
 <button (click)='change(3)' >Données 3</button>
-<!--<app-timeline [scale]="[0,50]" color="green" nom="Temperature_Cuisine"></app-timeline>
+<app-timeline [data]=dat4></app-timeline>
+<!--
 <app-timeline type="fix" maxValue="80" color="blue" nom="Temperature_Cuisine"></app-timeline>
 <app-timeline type="multi" color="blue" color2="green" nom="Temperature_Cuisine" nom2="Temperature_Salon"></app-timeline>
 
