@@ -173,12 +173,12 @@ export class TimelineComponent implements OnInit {
       for(let index=this.dataZoom.length; index<this.lastDatalength; index++){
         this.svg.selectAll('.line'+index).remove();
       }
-      this.idZoom=1;
+      this.idZoom=0;
       this.lastDatalength=this.dataZoom.length;
     }else{
       this.first=false;
     }
-    
+    this.updateToolTips();
 
   }
 
@@ -210,6 +210,12 @@ export class TimelineComponent implements OnInit {
     this.lengthTime = this.maxTime - this.minTime;
   }
 
+  private updateToolTips() {
+    let taille = this.dataZoom.length;
+    this.tooltip.remove("polyline");
+    this.addToolTips();
+  }
+
   private addToolTips() { //creer le tooltips
     this.tooltip = this.svg.append("g")
         .attr("id", "tooltip")
@@ -229,48 +235,60 @@ export class TimelineComponent implements OnInit {
     
     // Le tooltip en lui-même avec sa pointe vers le bas
     // Il faut le dimensionner en fonction du contenu
+
+    let taille = this.dataZoom.length;
     this.tooltip.append("polyline")
-        .attr("points","0,0 0,40, 55,40, 60,45 65,40 160,40 160,0 0,0")
+      .attr("points", "0,0 0," + (40 * taille)+", 75," + (40 * taille)+", 80," + (45 * taille)+" 85," + (40 * taille)+" 160," + (40 * taille)+" 160,0 0,0")
         .style("fill", "#fafafa")
         .style("stroke","#3498db")
         .style("opacity","0.9")
         .style("stroke-width","1")
-        .attr("transform", "translate(-60, -55)");
-    
-    
-    // Cet élément contiendra tout notre texte
-    let text = this.tooltip.append("text")
+        .attr("transform", "translate(-80, "+(-50*taille)+")");
+  
+    this.dataZoom.forEach((element,index) => {
+      // Cet élément contiendra tout notre texte
+      let text = this.tooltip.append("text")
         .style("font-size", "13px")
         .style("font-family", "Segoe UI")
-        .style("color", "#333333")
-        .style("fill", "#333333")
-        .attr("transform", "translate(-50, -40)");
+        .style("color", element.color)
+        .style("fill", element.color)
+        .attr("transform", "translate(-80,"+(-42*(index+1))+")");
+ 
+      // Element pour la date avec positionnement spécifique
+      text.append("tspan")
+        .attr("dx", "7")
+        .attr("dy", "5")
+        .attr("id", "tooltip-date1" + index);
     
-    // Element pour la date avec positionnement spécifique
-    text.append("tspan")
-      .attr("dx", "7")
-      .attr("dy", "10")
-      .attr("id", "tooltip-date");
+        text.append("tspan")
+        .attr("dx", "-90")
+        .attr("dy", "15")
+        .attr("id", "tooltip-date2"+index);
+    });
   }
 
   private showInfo(event: any) { // fonction qui affiche le tooltips
     let time: number[] = [];
-    console.log(this.dataZoom);
-    this.dataZoom.forEach((element) => element.values.forEach((element => time.push(element[0]))));
-    console.log(time);
+    this.dataZoom[0].values.forEach((element) => time.push(element[0]));
     this.tooltip.style("display","block");
     this.tooltip.style("opacity", 100);
     let x0 = this.x.invert(event.clientX - this.margin.left).getTime();
     let i = d3.bisectRight(time, x0);
-    if(i>this.dataZoom[0].values.length-1)i=this.dataZoom.length-1;
+    if(i>this.dataZoom[0].values.length-1)i=this.dataZoom[0].values.length-1;
     else if (i < 0) i = 0;
-    console.log(i);
+    this.dataZoom.forEach((element,index) => {
+      let d: number = this.dataZoom[index].values[i][1];
+      let t = this.dataZoom[index].values[i][0];
+      let date = new Date(t).toLocaleDateString("fr", { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' });
+      let txt = date + "\n" + t;
+      d3.select('#tooltip-date1' + index)
+          .text(date);
+      d3.select('#tooltip-date2' + index)
+          .text(roundDecimal(d,2));
+    });
     let d: number = this.dataZoom[0].values[i][1];
     let t = this.dataZoom[0].values[i][0];
     this.tooltip.attr("transform", "translate(" + this.x(t) + "," + this.y(d) + ")");
-    let date = new Date(t).toLocaleDateString("fr", {year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute : 'numeric' , second: 'numeric' } );
-    d3.select('#tooltip-date')
-      .text(date);
   }
     
   private hideInfo() { //fonction qui cache le tooltips
