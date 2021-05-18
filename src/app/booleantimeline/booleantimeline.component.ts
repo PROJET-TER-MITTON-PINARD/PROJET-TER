@@ -30,6 +30,8 @@ export class BooleantimelineComponent implements OnInit {
   @ViewChild('root') timeline!: ElementRef;
   @Input() range!: [number,number,number];
   @Output() rangeChange = new EventEmitter<[number,number,number]>();
+  @Input() currentTime: number|undefined = undefined;
+  @Output() currentTimeChange = new EventEmitter<number|undefined>();
 
   public title = 'Boolean timeline';
 
@@ -48,8 +50,10 @@ export class BooleantimelineComponent implements OnInit {
   private area: d3.Area<[number, number]>[] = []; // this is line defination
   private line: d3.Line<[number, number]>[] = []; // this is line defination
   private tooltip: any;
+  private currentTimeLine: any;
   private lastDatalength:number = 0;
   private modeToolTips: string = "normal";
+  private currentTimeSelected:boolean = false;
 
   
   constructor() {   
@@ -141,9 +145,16 @@ export class BooleantimelineComponent implements OnInit {
     .append('g')
     .attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')');
     
-    d3.select(this.timeline.nativeElement).on("mousemove", (event: any) => this.showInfo(event))
+    d3.select(this.timeline.nativeElement).on("mousemove", (event: any) => {
+      this.showInfo(event)
+      if(this.currentTimeSelected){
+        this.moveCurrentTime(event);
+      }
+    })
     .on("mouseleave", () => this.hideInfo())
-    .on("wheel", (event: any) => this.zoom(event));
+    .on("wheel", (event: any) => this.zoom(event))
+    .on("mousedown", (event: any) => this.selectCurrentTime(event))
+    .on("mouseup", () => this.currentTimeSelected=false);
   }
 
   private addXandYAxis(){
@@ -191,6 +202,15 @@ export class BooleantimelineComponent implements OnInit {
         
       }
     )
+    this.currentTimeLine = this.svg.append("g")
+      .append("line")
+      .attr("class", "currentTimeLine")
+      .attr("x1",150)
+      .attr("y1",0)
+      .attr("x2",150)
+      .attr("y2",this.height).style('stroke', 'red')
+      .style('stroke-width', '3px')
+      .style("opacity", 1);
     this.addToolTips();
   }
   
@@ -298,9 +318,8 @@ export class BooleantimelineComponent implements OnInit {
     this.tooltip.remove("polyline");
     this.addToolTips();
   }
-
   
-private addToolTips() { //creer le tooltips
+  private addToolTips() { //creer le tooltips
     this.tooltip = this.svg.append("g")
         .attr("id", "tooltip")
         .style("display", "none");
@@ -385,8 +404,8 @@ private addToolTips() { //creer le tooltips
 
   private showInfo(event: any) { // fonction qui affiche le tooltips
     let time: number[] = [];
-      if (this.dataZoom[0] != undefined) {
-        this.dataZoom[0].values.forEach((element) => time.push(element[0]));
+    if (this.dataZoom[0] != undefined) {
+      this.dataZoom[0].values.forEach((element) => time.push(element[0]));
       this.tooltip.style("display","block");
       this.tooltip.style("opacity", 100);
       let x0 = this.x.invert(event.clientX - this.margin.left).getTime();
@@ -428,7 +447,6 @@ private addToolTips() { //creer le tooltips
   private hideInfo() { //fonction qui cache le tooltips
     this.tooltip.style("display", "none");
   }
-
 
   private zoom(event: WheelEvent){
     event.preventDefault();
@@ -478,6 +496,17 @@ private addToolTips() { //creer le tooltips
         this.idZoom--;
       }
     }
+  }
+
+  private selectCurrentTime(event: MouseEvent){
+    if((this.margin.left+5+parseInt(this.currentTimeLine.attr("x2"))<event.clientX)&&(this.margin.left+10+parseInt(this.currentTimeLine.attr("x2"))>event.clientX)){
+      this.currentTimeSelected=true;
+    }
+  }
+
+  private moveCurrentTime(event: MouseEvent){
+    this.currentTimeLine.attr("x1", event.clientX-this.margin.left-5);
+    this.currentTimeLine.attr("x2", event.clientX-this.margin.left-5);
   }
 
   private isMaxScaleX(d: Data[]) { 
