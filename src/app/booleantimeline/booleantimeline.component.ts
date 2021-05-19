@@ -26,6 +26,8 @@ export interface Data {
 export class BooleantimelineComponent implements OnInit {
 
   
+  @Input() Nwidth: number | undefined;
+  @Input() Nheight: number | undefined; 
   @Input() data!: Data[];
   @ViewChild('root') timeline!: ElementRef;
   @Input() range!: [number,number,number];
@@ -69,6 +71,12 @@ export class BooleantimelineComponent implements OnInit {
     this.lastDatalength=this.dataZoom.length;
     if(this.currentTime==undefined){
       this.currentTimeLocal = this.isMinScaleX(this.data);
+    }
+    if (this.Nwidth == undefined) {
+      this.Nwidth = 900;
+    }
+    if (this.Nheight == undefined) {
+      this.Nheight = 200;
     }
   }
 

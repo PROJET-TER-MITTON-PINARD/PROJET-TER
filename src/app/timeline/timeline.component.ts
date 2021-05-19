@@ -24,6 +24,9 @@ export interface Data {
 
 export class TimelineComponent implements OnInit {
   
+
+  @Input() Nwidth: number | undefined;
+  @Input() Nheight: number | undefined; 
   @Input() domain: [number, number] | undefined;
   @Input() data!: Data[];
   @ViewChild('root') timeline!: ElementRef;
@@ -42,8 +45,8 @@ export class TimelineComponent implements OnInit {
   private minTime: number = 0;
   private maxTime: number = 0;
   private lengthTime: number = 0;
-  private width: number = 0;
   private height: number = 0;
+  private width: number = 0;
   private x: any;
   private y: any;
   private svg: any;
@@ -69,6 +72,12 @@ export class TimelineComponent implements OnInit {
     this.lastDatalength=this.dataZoom.length;
     if(this.currentTime==undefined){
       this.currentTimeLocal = this.isMinScaleX(this.data);
+    }
+    if (this.Nwidth == undefined) {
+      this.Nwidth = 900;
+    }
+    if (this.Nheight == undefined) {
+      this.Nheight = 200;
     }
   }
 
