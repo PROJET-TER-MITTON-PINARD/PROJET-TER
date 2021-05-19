@@ -52,6 +52,7 @@ export class BooleantimelineComponent implements OnInit {
   private tooltip: any;
   private currentTimeLine: any;
   private lastDatalength:number = 0;
+  private currentTimeLocal: number = 0;
   private modeToolTips: string = "normal";
   private currentTimeSelected:boolean = false;
 
@@ -66,6 +67,9 @@ export class BooleantimelineComponent implements OnInit {
     this.title = 'Boolean timeline';
     this.dataZoom = [...this.data];
     this.lastDatalength=this.dataZoom.length;
+    if(this.currentTime==undefined){
+      this.currentTimeLocal = this.isMinScaleX(this.data);
+    }
   }
 
   public ngAfterViewInit(): void { //after le render pour recuperer les valeurs transmise au sein de la balise html 
@@ -75,6 +79,7 @@ export class BooleantimelineComponent implements OnInit {
       this.width = (w - this.margin.left) - this.margin.right;
       this.height = (h - this.margin.top) - this.margin.bottom;
     }
+
     this.data.forEach(
       (element,index) => {
         if(element.style=="area" || element.style=="both"){
@@ -136,7 +141,10 @@ export class BooleantimelineComponent implements OnInit {
         this.dataZoom[index].values.push([this.range[1],this.dataZoom[index].values[this.dataZoom[index].values.length-1][1]]);
       })
       this.updateSvg(this.range[0],this.range[1]);
-
+    }
+    if (changes.currentTime&&!changes.currentTime.firstChange&&this.currentTime!=undefined) {
+      this.currentTimeLocal=this.currentTime;
+      this.updateCurrentTime();
     }
 }
   
@@ -144,17 +152,18 @@ export class BooleantimelineComponent implements OnInit {
     this.svg = d3.select(this.timeline.nativeElement)
     .append('g')
     .attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')');
-    
     d3.select(this.timeline.nativeElement).on("mousemove", (event: any) => {
-      this.showInfo(event)
       if(this.currentTimeSelected){
+        this.hideInfo();
         this.moveCurrentTime(event);
+      }else{
+        this.showInfo(event);
       }
     })
     .on("mouseleave", () => this.hideInfo())
     .on("wheel", (event: any) => this.zoom(event))
-    .on("mousedown", (event: any) => this.selectCurrentTime(event))
     .on("mouseup", () => this.currentTimeSelected=false);
+    
   }
 
   private addXandYAxis(){
@@ -202,15 +211,20 @@ export class BooleantimelineComponent implements OnInit {
         
       }
     )
-    this.currentTimeLine = this.svg.append("g")
-      .append("line")
-      .attr("class", "currentTimeLine")
-      .attr("x1",150)
-      .attr("y1",0)
-      .attr("x2",150)
-      .attr("y2",this.height).style('stroke', 'red')
-      .style('stroke-width', '3px')
-      .style("opacity", 1);
+
+    this.currentTimeLine = this.svg.append('path')
+      .datum([[this.currentTimeLocal,this.isMinScaleY(this.data)],[this.currentTimeLocal,this.isMaxScaleY(this.data)]])
+      .attr('class', 'currentTimeLine')
+      .attr('d', d3.line()
+        .x((d: any) => this.x(d[0]))
+        .y((d: any) => this.y(d[1])))
+      .style('fill', 'none')
+      .style('stroke', 'red')
+      .style('stroke-width', '3px');
+
+
+    this.currentTimeLine
+    .on("mousedown", () => this.currentTimeSelected=true);
     this.addToolTips();
   }
   
@@ -305,6 +319,28 @@ export class BooleantimelineComponent implements OnInit {
         .style('stroke-width', '2px')
       }
     });
+    this.updateCurrentTime();
+  }
+
+  private updateCurrentTime(){
+    let lineUpdate;
+      lineUpdate= this.svg.selectAll('.currentTimeLine').datum([[this.currentTimeLocal,this.isMinScaleY(this.data)],[this.currentTimeLocal,this.isMaxScaleY(this.data)]]);
+          lineUpdate
+          .enter()
+          .append("path")
+          .attr('class', 'currentTimeLine')
+          .merge(lineUpdate)
+          .attr('d', d3.line()
+            .x((d: any) => this.x(d[0]))
+            .y((d: any) => this.y(d[1])))
+          .style('fill', 'none')
+          .style('stroke', 'red')
+          .style('stroke-width', '3px')
+    if(this.currentTimeLocal>=this.isMinScaleX(this.dataZoom)&&this.currentTimeLocal<=this.isMaxScaleX(this.dataZoom)){
+      this.svg.selectAll('.currentTimeLine').attr('display','block');
+    }else{
+      this.svg.selectAll('.currentTimeLine').attr('display','none');
+    }
   }
   
   private buildZoom(){
@@ -498,15 +534,19 @@ export class BooleantimelineComponent implements OnInit {
     }
   }
 
-  private selectCurrentTime(event: MouseEvent){
-    if((this.margin.left+5+parseInt(this.currentTimeLine.attr("x2"))<event.clientX)&&(this.margin.left+10+parseInt(this.currentTimeLine.attr("x2"))>event.clientX)){
-      this.currentTimeSelected=true;
-    }
-  }
-
   private moveCurrentTime(event: MouseEvent){
-    this.currentTimeLine.attr("x1", event.clientX-this.margin.left-5);
-    this.currentTimeLine.attr("x2", event.clientX-this.margin.left-5);
+    event.preventDefault();
+    let pos = this.x.invert(event.clientX-this.margin.left).getTime();
+    if(pos<this.isMinScaleX(this.dataZoom)){
+      this.currentTimeLocal=this.isMinScaleX(this.dataZoom);
+    }else if(pos>this.isMaxScaleX(this.dataZoom)){
+      this.currentTimeLocal=this.isMaxScaleX(this.dataZoom);
+    }else{
+      this.currentTimeLocal=pos;
+    }
+    this.updateCurrentTime();
+    this.currentTimeChange.emit(this.currentTimeLocal);
+    
   }
 
   private isMaxScaleX(d: Data[]) { 

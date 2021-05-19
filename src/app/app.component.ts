@@ -23,6 +23,7 @@ export class AppComponent implements OnInit {
   public dat6: Data[] = [];
   public dat7: Data[] = [];
   public range: [number,number,number]= [0,0,0];
+  public currentTime: number | undefined;
   constructor(private DataServ: DataService) {
     this.generateData();
   }
@@ -47,7 +48,7 @@ export class AppComponent implements OnInit {
       style: "both",
       interpolation: "step"
     }
-    let d2: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"Temperature_Salon", parseFloat);
+    let d2: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"PC5", this.parseBool);
     let v2: [number,number][] = [];
     d2.forEach(element =>v2.push([element.timestamp,element.value]));
     let x:number = 0;
@@ -130,6 +131,10 @@ export class AppComponent implements OnInit {
 
   public updateRange(rangeChange: [number,number,number]){
     this.range=rangeChange;
+  }
+
+  public updateCurrentTime(currentTimeChange: number |undefined){
+    this.currentTime=currentTimeChange;
   }
   
   public change(i: number){
