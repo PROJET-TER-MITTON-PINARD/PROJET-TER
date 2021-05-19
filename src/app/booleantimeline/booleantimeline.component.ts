@@ -62,8 +62,7 @@ export class BooleantimelineComponent implements OnInit {
   private lastPos: number = 0;
 
   
-  constructor(
-    private renderer: Renderer2) {   
+  constructor(private renderer: Renderer2) {   
     
     if(this.range==undefined){
       this.range=[0,0,0];
@@ -256,8 +255,8 @@ export class BooleantimelineComponent implements OnInit {
     this.scrollbar.nativeElement.style.borderRadius = "10px";
 
     this.renderer.listen(this.scrollbar.nativeElement, 'mousedown', (event:any) => this.activeScrollbar(event));
-    this.renderer.listen(this.scrollbar.nativeElement, 'mouseleave', () => this.desactiveScrollbar());
-    this.renderer.listen(this.scrollbar.nativeElement, 'mouseup', () => this.desactiveScrollbar());
+    this.renderer.listen(this.zoneScrollbar.nativeElement, 'mouseleave', () => this.desactiveScrollbar());
+    this.renderer.listen(this.zoneScrollbar.nativeElement, 'mouseup', () => this.desactiveScrollbar());
     this.renderer.listen(this.zoneScrollbar.nativeElement,'mousemove', (event:any) => this.updateRange(event));
   }
   
@@ -307,6 +306,7 @@ export class BooleantimelineComponent implements OnInit {
     this.svg.selectAll('.yAxis').call(d3.axisLeft(this.y));
     this.svg.selectAll('.xAxis').call(d3.axisBottom(this.x));
     this.updateLine();
+    this.updateScrollbar(this.minTime,this.maxTime);
     this.updateToolTips();
     for(let index=this.dataZoom.length; index<this.lastDatalength; index++){
       this.svg.selectAll('.line'+index).remove();

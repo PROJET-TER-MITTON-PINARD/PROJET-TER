@@ -1,4 +1,4 @@
-import { Component, OnInit,Input, AfterViewInit, ViewChild, ElementRef, SimpleChanges, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit,Input, AfterViewInit, ViewChild, ElementRef, SimpleChanges, Output, EventEmitter, Renderer2 } from '@angular/core';
 import * as d3 from 'd3';
 import * as d3Scale from 'd3';
 import * as d3Array from 'd3';
@@ -30,6 +30,8 @@ export class TimelineComponent implements OnInit {
   @Input() domain: [number, number] | undefined;
   @Input() data!: Data[];
   @ViewChild('root') timeline!: ElementRef;
+  @ViewChild('scroll') scrollbar!: ElementRef;
+  @ViewChild('zone') zoneScrollbar!: ElementRef;
   @Input() range!: [number,number,number];
   @Output() rangeChange = new EventEmitter<[number, number, number]>();
   @Input() currentTime: number|undefined = undefined;
@@ -58,9 +60,11 @@ export class TimelineComponent implements OnInit {
   private currentTimeLocal: number = 0;
   private modeToolTips: string = "normal";
   private currentTimeSelected:boolean = false;
+  private scrollbarSelected:boolean = false;
+  private lastPos: number = 0;
   
   
-  constructor(private DataServ: DataService) {
+  constructor(private renderer: Renderer2) {
     if(this.range==undefined){
       this.range=[0,0,0];
     }
@@ -122,6 +126,7 @@ export class TimelineComponent implements OnInit {
     this.buildFix();
     this.addXandYAxis();
     this.drawLineAndPath();
+    this.buildScrollbar();
   }
 
   public ngOnChanges(changes: SimpleChanges): void {
@@ -247,6 +252,22 @@ export class TimelineComponent implements OnInit {
     this.addToolTips();
   }
 
+  private buildScrollbar(){
+    this.zoneScrollbar.nativeElement.style.width = this.width+"px";
+    this.zoneScrollbar.nativeElement.style.marginLeft = this.margin.left+ "px";
+    this.zoneScrollbar.nativeElement.style.height = "20px";
+    this.zoneScrollbar.nativeElement.style.backgroundColor = "lightgrey";
+    this.scrollbar.nativeElement.style.width = this.width+"px";
+    this.scrollbar.nativeElement.style.height = "20px";
+    this.scrollbar.nativeElement.style.backgroundColor = "grey";
+    this.scrollbar.nativeElement.style.borderRadius = "10px";
+
+    this.renderer.listen(this.scrollbar.nativeElement, 'mousedown', (event:any) => this.activeScrollbar(event));
+    this.renderer.listen(this.zoneScrollbar.nativeElement, 'mouseleave', () => this.desactiveScrollbar());
+    this.renderer.listen(this.zoneScrollbar.nativeElement, 'mouseup', () => this.desactiveScrollbar());
+    this.renderer.listen(this.zoneScrollbar.nativeElement,'mousemove', (event:any) => this.updateRange(event));
+  }
+
   private updateChart(){
     this.dataZoom = [...this.data];
     this.data.forEach(
@@ -298,6 +319,7 @@ export class TimelineComponent implements OnInit {
     this.svg.selectAll('.yAxis').call(d3.axisLeft(this.y));
     this.svg.selectAll('.xAxis').call(d3.axisBottom(this.x));
     this.updateLine();
+    this.updateScrollbar(this.minTime,this.maxTime);
     for(let index=this.dataZoom.length; index<this.lastDatalength; index++){
       this.svg.selectAll('.line'+index).remove();
       this.svg.selectAll('.area'+index).remove();
@@ -310,6 +332,7 @@ export class TimelineComponent implements OnInit {
     this.x.domain(d3Array.extent([min,max]));
     this.svg.selectAll('.xAxis').call(d3.axisBottom(this.x));
     this.updateLine();
+    this.updateScrollbar(min,max);
   }
 
   private updateLine(){
@@ -370,6 +393,66 @@ export class TimelineComponent implements OnInit {
     }else{
       this.svg.selectAll('.currentTimeLine').attr('display','none');
     }
+  }
+
+  private updateScrollbar(min:number, max:number){
+    this.scrollbar.nativeElement.style.marginLeft= this.width*(min-this.minTime)/(this.lengthTime) + "px";
+    this.scrollbar.nativeElement.style.width= this.width*(max-min)/(this.lengthTime) + "px";
+  }
+
+  public activeScrollbar(event: MouseEvent){
+    this.scrollbarSelected=true;
+    this.lastPos=event.clientX-this.margin.left;
+  }
+
+  public desactiveScrollbar(){
+    this.scrollbarSelected=false;
+    this.lastPos=0;
+  }
+
+  public updateRange(event: MouseEvent){
+    if(this.scrollbarSelected){
+      event.preventDefault();
+      let lengthLocalTime = this.lengthTime / Math.pow(1.5,this.idZoom);
+      let lastMinLocalTime = this.isMinScaleX(this.dataZoom);
+      let pos = event.clientX-this.margin.left;
+      if(this.lastPos==0){
+        this.lastPos= pos;
+      }
+      let minLocalTime = (pos-this.lastPos)*this.lengthTime/this.width + lastMinLocalTime;
+      if(this.minTime>minLocalTime){
+        minLocalTime=this.minTime;
+      }
+      let maxLocalTime = minLocalTime + lengthLocalTime;
+      if(this.maxTime<maxLocalTime){
+        maxLocalTime=this.maxTime;
+        minLocalTime=maxLocalTime - lengthLocalTime;
+      }
+      let dataLocal: Data[]= [];
+      this.data.forEach((element,index) => {
+        dataLocal[index]={
+          label: element.label,
+          values: element.values.filter((element: any) => minLocalTime <= element[0] && element[0] <=  maxLocalTime),
+          color: element.color,
+          style: element.style,
+          interpolation: element.interpolation
+      }}) 
+      let time: number[];
+      this.dataZoom =dataLocal;
+      this.data.forEach((element,index) => {
+        time=[];
+        element.values.forEach((element => time.push(element[0])));
+        let i = d3.bisectLeft(time, minLocalTime)-1;
+        if(i>=0&&i<this.data[index].values.length){
+          this.dataZoom[index].values.unshift([minLocalTime,(this.data[index].values[i][1])]);
+        }
+        this.dataZoom[index].values.push([maxLocalTime,this.dataZoom[index].values[this.dataZoom[index].values.length-1][1]]);
+      })
+      this.updateSvg(minLocalTime,maxLocalTime);
+      this.rangeChange.emit([minLocalTime,maxLocalTime,this.idZoom]);
+      this.lastPos=pos;
+    }
+    
   }
   
   private buildZoom(){
