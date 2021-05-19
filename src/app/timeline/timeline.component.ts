@@ -28,7 +28,9 @@ export class TimelineComponent implements OnInit {
   @Input() data!: Data[];
   @ViewChild('root') timeline!: ElementRef;
   @Input() range!: [number,number,number];
-  @Output() rangeChange = new EventEmitter<[number,number,number]>();
+  @Output() rangeChange = new EventEmitter<[number, number, number]>();
+  @Input() currentTime: number|undefined = undefined;
+  @Output() currentTimeChange = new EventEmitter<number|undefined>();
 
 
   public title = 'Line Chart';
@@ -48,8 +50,11 @@ export class TimelineComponent implements OnInit {
   private area: d3.Area<[number, number]>[] = []; // this is line defination
   private line: d3.Line<[number, number]>[] = []; // this is line defination
   private tooltip: any;
-  private lastDatalength: number = 0;
+  private currentTimeLine: any;
+  private lastDatalength:number = 0;
+  private currentTimeLocal: number = 0;
   private modeToolTips: string = "normal";
+  private currentTimeSelected:boolean = false;
   
   
   constructor(private DataServ: DataService) {
@@ -62,6 +67,9 @@ export class TimelineComponent implements OnInit {
   public ngOnInit(): void {
     this.dataZoom = [...this.data];
     this.lastDatalength=this.dataZoom.length;
+    if(this.currentTime==undefined){
+      this.currentTimeLocal = this.isMinScaleX(this.data);
+    }
   }
 
   public ngAfterViewInit() {
@@ -107,7 +115,7 @@ export class TimelineComponent implements OnInit {
     this.drawLineAndPath();
   }
 
-  public ngOnChanges(changes: SimpleChanges) {
+  public ngOnChanges(changes: SimpleChanges): void {
     if (changes.data&&!changes.data.firstChange) {
       this.updateChart();
     }
@@ -132,17 +140,28 @@ export class TimelineComponent implements OnInit {
         this.dataZoom[index].values.push([this.range[1],this.dataZoom[index].values[this.dataZoom[index].values.length-1][1]]);
       })
       this.updateSvg(this.range[0],this.range[1]);
-
+    }
+    if (changes.currentTime&&!changes.currentTime.firstChange&&this.currentTime!=undefined) {
+      this.currentTimeLocal=this.currentTime;
+      this.updateCurrentTime();
     }
 }
   private buildFix() { // creer une timeline avec une seul donnée
     this.svg = d3.select(this.timeline.nativeElement)
     .append('g')
     .attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')');
+    d3.select(this.timeline.nativeElement).on("mousemove", (event: any) => {
+      if(this.currentTimeSelected){
+        this.hideInfo();
+        this.moveCurrentTime(event);
+      }else{
+        this.showInfo(event);
+      }
+    })
+    .on("mouseleave", () => { this.currentTimeSelected = false; this.hideInfo() })
+    .on("wheel", (event: any) => this.zoom(event))
+    .on("mouseup", () => this.currentTimeSelected = false);
     
-    d3.select(this.timeline.nativeElement).on("mousemove", (event: any) => this.showInfo(event))
-      .on("mouseleave", () => this.hideInfo())
-    .on("wheel", (event: any) => this.zoom(event));
   }
 
   private addXandYAxis(){
@@ -194,8 +213,31 @@ export class TimelineComponent implements OnInit {
         
       }
     )
+    let select;
+    if (this.domain != undefined) {
+     select= this.svg.append('path').datum([[this.currentTimeLocal,this.domain[0]],[this.currentTimeLocal,this.domain[1]]]);
+    }
+    else {
+      select= this.svg.append('path').datum([[this.currentTimeLocal,this.isMinScaleY(this.data)],[this.currentTimeLocal,this.isMaxScaleY(this.data)]]);
+    }
+    this.currentTimeLine = select
+      .attr('class', 'currentTimeLine')
+      .attr('d', d3.line()
+        .x((d: any) => this.x(d[0]))
+        .y((d: any) => this.y(d[1])))
+      .style('fill', 'none')
+      .style('stroke', 'red')
+      .style('stroke-width', '3px');
+
+
+    this.currentTimeLine
+    .on("mousedown", () => {
+      this.currentTimeSelected=true;
+      this.hideInfo();
+    });
     this.addToolTips();
   }
+
   private updateChart(){
     this.dataZoom = [...this.data];
     this.data.forEach(
@@ -292,6 +334,33 @@ export class TimelineComponent implements OnInit {
         .style('stroke-width', '2px')
       }
     });
+    this.updateCurrentTime();
+  }
+
+  private updateCurrentTime(){
+    let lineUpdate;
+    if (this.domain != undefined) {
+      lineUpdate= this.svg.selectAll('.currentTimeLine').datum([[this.currentTimeLocal,this.domain[0]],[this.currentTimeLocal,this.domain[1]]]);
+    }
+    else {
+      lineUpdate= this.svg.selectAll('.currentTimeLine').datum([[this.currentTimeLocal,this.isMinScaleY(this.data)],[this.currentTimeLocal,this.isMaxScaleY(this.data)]]);
+    }
+          lineUpdate
+          .enter()
+          .append("path")
+          .attr('class', 'currentTimeLine')
+          .merge(lineUpdate)
+          .attr('d', d3.line()
+            .x((d: any) => this.x(d[0]))
+            .y((d: any) => this.y(d[1])))
+          .style('fill', 'none')
+          .style('stroke', 'red')
+          .style('stroke-width', '3px')
+    if(this.currentTimeLocal>=this.isMinScaleX(this.dataZoom)&&this.currentTimeLocal<=this.isMaxScaleX(this.dataZoom)){
+      this.svg.selectAll('.currentTimeLine').attr('display','block');
+    }else{
+      this.svg.selectAll('.currentTimeLine').attr('display','none');
+    }
   }
   
   private buildZoom(){
@@ -487,6 +556,21 @@ export class TimelineComponent implements OnInit {
         this.idZoom--;
       }
     }
+  }
+
+  private moveCurrentTime(event: MouseEvent){
+    event.preventDefault();
+    let pos = this.x.invert(event.clientX-this.margin.left).getTime();
+    if(pos<this.isMinScaleX(this.dataZoom)){
+      this.currentTimeLocal=this.isMinScaleX(this.dataZoom);
+    }else if(pos>this.isMaxScaleX(this.dataZoom)){
+      this.currentTimeLocal=this.isMaxScaleX(this.dataZoom);
+    }else{
+      this.currentTimeLocal=pos;
+    }
+    this.updateCurrentTime();
+    this.currentTimeChange.emit(this.currentTimeLocal);
+    
   }
 
   private isMaxScaleX(d: Data[]) { //renvoie les data avec le plus grand nombre de données 

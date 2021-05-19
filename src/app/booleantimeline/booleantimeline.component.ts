@@ -160,7 +160,7 @@ export class BooleantimelineComponent implements OnInit {
         this.showInfo(event);
       }
     })
-    .on("mouseleave", () => this.hideInfo())
+    .on("mouseleave", () => { this.currentTimeSelected = false; this.hideInfo() })
     .on("wheel", (event: any) => this.zoom(event))
     .on("mouseup", () => this.currentTimeSelected=false);
     
