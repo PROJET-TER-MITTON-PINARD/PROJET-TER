@@ -50,6 +50,7 @@ export class AppComponent implements OnInit {
     }
     let d2: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"PC5", this.parseBool);
     let v2: [number,number][] = [];
+    v2.push(v1[0]);
     d2.forEach(element =>v2.push([element.timestamp,element.value]));
     let x:number = 0;
     v2.forEach(element=> {
@@ -57,6 +58,7 @@ export class AppComponent implements OnInit {
       x=this.getRandomInt(x);
     }
       );
+    v2.push(v1[v1.length-1]);
     let da2: Data = {
       label: "PC5",
       values: v2,
