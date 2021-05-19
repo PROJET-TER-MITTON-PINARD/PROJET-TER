@@ -26,6 +26,8 @@ export interface Data {
 export class BooleantimelineComponent implements OnInit {
 
   
+  @Input() Nwidth: number | undefined;
+  @Input() Nheight: number | undefined; 
   @Input() data!: Data[];
   @ViewChild('root') timeline!: ElementRef;
   @ViewChild('scroll') scrollbar!: ElementRef;
@@ -74,6 +76,12 @@ export class BooleantimelineComponent implements OnInit {
     this.lastDatalength=this.dataZoom.length;
     if(this.currentTime==undefined){
       this.currentTimeLocal = this.isMinScaleX(this.data);
+    }
+    if (this.Nwidth == undefined) {
+      this.Nwidth = 900;
+    }
+    if (this.Nheight == undefined) {
+      this.Nheight = 200;
     }
   }
 
@@ -166,7 +174,7 @@ export class BooleantimelineComponent implements OnInit {
         this.showInfo(event);
       }
     })
-    .on("mouseleave", () => this.hideInfo())
+    .on("mouseleave", () => { this.currentTimeSelected = false; this.hideInfo() })
     .on("wheel", (event: any) => this.zoom(event))
     .on("mouseup", () => this.currentTimeSelected=false);
     
