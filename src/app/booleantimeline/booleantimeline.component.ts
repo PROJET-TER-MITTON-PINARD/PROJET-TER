@@ -224,7 +224,10 @@ export class BooleantimelineComponent implements OnInit {
 
 
     this.currentTimeLine
-    .on("mousedown", () => this.currentTimeSelected=true);
+    .on("mousedown", () => {
+      this.currentTimeSelected=true;
+      this.hideInfo();
+    });
     this.addToolTips();
   }
   
