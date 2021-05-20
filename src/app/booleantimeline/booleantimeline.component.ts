@@ -133,7 +133,7 @@ export class BooleantimelineComponent implements OnInit {
     if (changes.data&&!changes.data.firstChange) {
       this.updateChart();
     }
-    if (changes.range&&!changes.range.firstChange) {
+    if ((changes.data&&!changes.data.firstChange)||(changes.range&&!changes.range.firstChange)) {
       this.idZoom=this.range[2];
       this.data.forEach((element,index) => {
         this.dataZoom[index]={
