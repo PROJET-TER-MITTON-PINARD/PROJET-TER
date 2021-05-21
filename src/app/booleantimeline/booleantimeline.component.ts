@@ -257,6 +257,12 @@ export class BooleantimelineComponent implements OnInit {
         if(element.style=="line"){
           this.svg.selectAll('.area'+index).remove();
         }
+        this.title = 'Timeline : ';
+        if(index==this.data.length-1){
+          this.title = this.title+element.label+'.';
+        }else{
+          this.title = this.title+element.label + ', ';
+        }
     })
     this.buildZoom();
     let info = this.createRangeDomain(this.data);
