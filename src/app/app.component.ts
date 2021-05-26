@@ -75,22 +75,22 @@ export class AppComponent implements OnInit {
       interpolation: "step"
     }
 
-    let d4: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"Presence_Bureau",  this.parseBool);
+    let d4: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"Temperature_Salon",  parseFloat);
     let v4: [number,number][] = [];
     d4.forEach(element =>v4.push([element.timestamp,element.value]));
     let da4: Data = {
-      label: "Presence_Bureau",
+      label: "Temperature_Salon",
       values: v4,
       color: "purple",
       style: "line",
       interpolation: "linear"
     }
 
-    let d5: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"Presence_Lit",  this.parseBool);
+    let d5: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"Temperature_Cuisine",  parseFloat);
     let v5: [number,number][] = [];
     d5.forEach(element =>v5.push([element.timestamp,element.value]));
     let da5: Data = {
-      label: "Presence_Lit",
+      label: "Temperature_Cuisine",
       values: v5,
       color: "gold",
       style: "line",
