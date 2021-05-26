@@ -1,25 +1,22 @@
 
 
-<app-booleantimeline [data]=dat2 [range]=range (rangeChange)="updateRange($event)" [currentTime]=currentTime (currentTimeChange)="updateCurrentTime($event)"></app-booleantimeline>
-<app-booleantimeline [data]=dat1 [range]=range (rangeChange)="updateRange($event)" [currentTime]=currentTime (currentTimeChange)="updateCurrentTime($event)"></app-booleantimeline>
-<app-timeline [Nwidth] = "900" [Nheight]="200" [domain] = [0,29] [data]=dat1 [range]=range (rangeChange)="updateRange($event)" [currentTime]=currentTime (currentTimeChange)="updateCurrentTime($event)"></app-timeline>
-<!--<app-timeline [data]=dat2 [range]=range (rangeChange)="updateRange($event)"></app-timeline>
+<app-timeline [data]=dat2 [range]=range (rangeChange)="updateRange($event)" [currentTime]=currentTime (currentTimeChange)="updateCurrentTime($event)"></app-timeline>
+<app-timeline [data]=dat1 [domain]=[0,30] [range]=range (rangeChange)="updateRange($event)" [currentTime]=currentTime (currentTimeChange)="updateCurrentTime($event)"></app-timeline>
+<!--<app-timeline [Nwidth] = "1200" [Nheight]="200" [domain] = [0,29] [data]=dat1 [range]=range (rangeChange)="updateRange($event)" [currentTime]=currentTime (currentTimeChange)="updateCurrentTime($event)"></app-timeline>
+<app-timeline [data]=dat2 [range]=range (rangeChange)="updateRange($event)"></app-timeline>
 <app-timeline [data]=dat3 [range]=range (rangeChange)="updateRange($event)"></app-timeline>
-<app-timeline [data]=datatest [range]=range></app-timeline>
+<app-timeline [data]=datatest [range]=range (rangeChange)="updateRange($event)" [currentTime]=currentTime (currentTimeChange)="updateCurrentTime($event)"></app-timeline>-->
+
+<app-timeline [data]=dat4 [range]=range (rangeChange)="updateRange($event)" [currentTime]=currentTime (currentTimeChange)="updateCurrentTime($event)"></app-timeline>
+<app-timeline [Nwidth] = "1200" [Nheight]="200" [data]=dat3 [range]=range (rangeChange)="updateRange($event)" [currentTime]=currentTime (currentTimeChange)="updateCurrentTime($event)"></app-timeline>
+<app-timeline [data]=datatest [domain]=[0,30] [range]=range [currentTime]=currentTime> </app-timeline>
 <button (click)='change(1)'>Données 1</button>
 <button (click)='change(2)'>Données 2</button>
 <button (click)='change(3)' >Données 3</button>
-
-<app-booleantimeline [data]=dat1 [range]=range (rangeChange)="updateRange($event)"></app-booleantimeline>
-<app-booleantimeline [data]=dat3 [range]=range (rangeChange)="updateRange($event)"></app-booleantimeline>
-<app-booleantimeline [data]=datatest [range]=range></app-booleantimeline>
-<button (click)='change(1)'>Données 1</button>
-<button (click)='change(2)'>Données 2</button>
-<button (click)='change(3)' >Données 3</button>
-
+<!--
 
 <app-timeline type="fix" maxValue="80" color="blue" nom="Temperature_Cuisine"></app-timeline>
 <app-timeline type="multi" color="blue" color2="green" nom="Temperature_Cuisine" nom2="Temperature_Salon"></app-timeline>
 
 <app-booleantimeline type="fix" nom="PC6" color="gold"></app-booleantimeline>
-<app-booleantimeline type="multi" nom="PC5" nom2="PC6" color="red" color2="green"></app-booleantimeline>-->
+<app-booleantimeline type="multi" nom="PC5" nom2="PC6" color="red" color2="green"></app-booleantimeline>--> 
