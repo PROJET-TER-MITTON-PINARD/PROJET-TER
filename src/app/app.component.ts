@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { Data } from './booleantimeline/booleantimeline.component';
+import { Data } from './timeline/timeline.component';
 import { DATA } from './data-interface';
 import { DataService } from './data.service';
 
