@@ -36,7 +36,6 @@ export class TimelineComponent implements OnInit {
   public title:string = 'Timeline : ';
   private margin = { top: 20, right: 20, bottom: 30, left: 50 }; //marge interne au svg 
   private dataZoom: Data[] = [];
-  private domainLocal:[number, number]=[0,0];
   private idZoom: number = 0;
   private minTime: number = 0;
   private maxTime: number = 0;
@@ -46,8 +45,8 @@ export class TimelineComponent implements OnInit {
   private scaleX: ScaleTime<number,number> = d3Scale.scaleTime();
   private scaleY: ScaleLinear<number,number> = d3Scale.scaleLinear();
   private svg: any;
-  private area: d3.Area<[number, number]>[] = []; // this is line defination
-  private line: d3.Line<[number, number]>[] = []; // this is line defination
+  private area: d3.Area<[number, number]>[] = [];
+  private line: d3.Line<[number, number]>[] = [];
   private tooltip!: Selection<SVGGElement,unknown,null,undefined>;
   private lastDatalength:number = 0;
   private modeToolTips: "normal" | "inverse" = "normal";
@@ -65,8 +64,6 @@ export class TimelineComponent implements OnInit {
       if(index==this.data.length-1) this.title = this.title+element.label+'.';
       else this.title = this.title+element.label + ', ';
     })
-    if((this.domain[0]==0&&this.domain[1]==0)||this.discreteValue(this.data)) this.domainLocal=[this.scale(this.data,"yMin"),this.scale(this.data,"yMax")];
-    else this.domainLocal=this.domain;
   }
 
   public ngAfterViewInit(): void { //after le render pour recuperer les valeurs transmise au sein de la balise html 
@@ -78,11 +75,12 @@ export class TimelineComponent implements OnInit {
     }
     this.data.forEach((element,index) => this.buildStyleData(element,index));
     this.buildZoom(); 
-    this.buildFix();
-    this.addXandYAxis();
+    this.buildEvent();
+    this.drawAxis();
     this.drawLineAndPath();
+    this.buildToolTips();
     this.drawLineCurrentTime();
-    this.buildScrollbar();
+    this.drawScrollbar();
   }
 
   public ngOnChanges(changes: SimpleChanges): void {
@@ -98,7 +96,7 @@ export class TimelineComponent implements OnInit {
     if (changes.currentTime&&!changes.currentTime.firstChange&&this.data.length!=0) this.updateCurrentTime();
 }
   
-  private buildFix(): void{ // creer une timeline avec une seul donnée
+  private buildEvent(): void{ // creer une timeline avec une seul donnée
     this.svg = d3.select(this.timeline.nativeElement)
     .append('g')
     .attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')');
@@ -107,102 +105,9 @@ export class TimelineComponent implements OnInit {
       else this.showInfo(event);
     })
     .on("mouseleave", () => { this.currentTimeSelected = false; this.hideInfo() })
-    .on("wheel", (event: WheelEvent) => this.zoom(event))
-    .on("mouseup", () => this.currentTimeSelected=false);
-  }
-
-  private addXandYAxis(): void{
-    this.scaleX.range([0, this.width]);
-    this.scaleX.domain([this.minTime,this.maxTime]);
-    this.scaleY = d3Scale.scaleLinear();
-    this.scaleY.range([this.height, 0]);
-    this.scaleY.domain(this.domainLocal);
-    // Configure the X Axis
-    this.svg.append('g')
-      .attr('transform', 'translate(0,' + this.height + ')')
-      .attr('class', 'xAxis')
-      .call(d3Axis.axisBottom(this.scaleX));
-    // Configure the Y Axis
-    if(this.discreteValue(this.data)){
-      this.svg.append('g')
-      .attr('class', 'yAxis')
-      .call(d3Axis.axisLeft(this.scaleY).ticks(this.scale(this.data,"yMax")));
-    }else{
-      this.svg.append('g')
-      .attr('class', 'yAxis')
-      .call(d3Axis.axisLeft(this.scaleY));
-    }
-  }
-
-  private drawLineAndPath(): void{
-    this.dataZoom.forEach(
-      (element,index) => {
-        if(element.style=="area" || element.style=="both"){
-          this.svg.append('path')
-          .datum(this.dataZoom[index].values)
-          .attr('class', 'area'+index)
-          .attr('d', this.area[index])
-          .attr("stroke-width", 0.1)
-          .attr('opacity', 0.3)
-          .style('fill', element.color)
-          .style('stroke', element.color)
-          .style('stroke-width', '2px')
-        }
-        if(element.style=="line" || element.style=="both"){
-          this.svg.append('path')
-          .datum(element.values)
-          .attr('class', 'line'+index)
-          .attr('d', this.line[index])
-          .style('fill', 'none')
-          .style('stroke', element.color)
-          .style('stroke-width', '2px')
-        }
-      }
-    )
-    this.addToolTips();
-  }
-
-  private drawLineCurrentTime(): void{
-    if(this.data.length!=0){
-      if(this.currentTime==0){
-        this.currentTime = this.scale(this.data,"xMin");
-      }
-      let x:number=0;
-      this.svg.append('path')
-        .datum([[this.currentTime,this.domainLocal[0]],[this.currentTime,this.height]])
-        .attr('class', 'currentTimeLine')
-        .attr('d', d3.line()
-          .x((d: number[]) => x=this.scaleX(d[0]))
-          .y((d: number[]) => this.scaleY(d[1])))
-        .style('fill', 'none')
-        .style('stroke', 'red')
-        .style('stroke-width', '3px');
-      this.svg.append('circle')
-        .attr('class', 'currentTimeSelector')
-        .attr('cx', x)
-        .attr('cy', -13)
-        .attr('r', 7)
-        .attr('fill', 'red')
-        .on("mousedown", () => {
-          this.currentTimeSelected=true;
-          this.hideInfo();
-        })
-    }
-  }
-
-  private buildScrollbar(): void{
-    this.zoneScrollbar.nativeElement.style.width = this.width+"px";
-    this.zoneScrollbar.nativeElement.style.marginLeft = this.margin.left+ "px";
-    this.zoneScrollbar.nativeElement.style.height = "20px";
-    this.zoneScrollbar.nativeElement.style.backgroundColor = "lightgrey";
-    this.scrollbar.nativeElement.style.width = this.width+"px";
-    this.scrollbar.nativeElement.style.height = "20px";
-    this.scrollbar.nativeElement.style.backgroundColor = "grey";
-    this.scrollbar.nativeElement.style.borderRadius = "10px";
-    this.renderer.listen(this.scrollbar.nativeElement, 'mousedown', (event:MouseEvent) => this.activeScrollbar(event));
-    this.renderer.listen(this.zoneScrollbar.nativeElement, 'mouseleave', () => this.desactiveScrollbar());
-    this.renderer.listen(this.zoneScrollbar.nativeElement, 'mouseup', () => this.desactiveScrollbar());
-    this.renderer.listen(this.zoneScrollbar.nativeElement,'mousemove', (event:MouseEvent) => this.updateRange(event));
+    .on("wheel", (event: WheelEvent) => this.activeZoom(event))
+    .on("mouseup", () => this.currentTimeSelected=false)
+    .on("mouseover", (event: MouseEvent) => event.preventDefault());
   }
   
   private buildStyleData(element:Data, index:number): void{
@@ -233,144 +138,6 @@ export class TimelineComponent implements OnInit {
       }
     }   
   }
-
-  private updateChart(): void{
-    this.dataZoom = [...this.data];
-    this.data.forEach(
-      (element,index) => {
-        this.buildStyleData(element,index);
-        if(element.style=="area") this.svg.selectAll('.line'+index).remove();
-        if(element.style=="line") this.svg.selectAll('.area'+index).remove();
-        this.title = 'Timeline : ';
-        if(index==this.data.length-1) this.title = this.title+element.label+'.';
-        else this.title = this.title+element.label + ', ';
-    })
-    this.buildZoom();
-    this.scaleX.domain([this.minTime,this.maxTime]);
-    this.scaleY.range([this.height, 0]);
-    if((this.domain[0]==0&&this.domain[1]==0)||this.discreteValue(this.data)){
-      this.domainLocal=[this.scale(this.data,"yMin"),this.scale(this.data,"yMax")];
-    }else{
-      this.domainLocal=this.domain;
-    }
-    this.scaleY.domain(this.domainLocal);
-    if(this.discreteValue(this.data)){
-      this.svg.selectAll('.yAxis')
-      .call(d3Axis.axisLeft(this.scaleY).ticks(this.scale(this.data,"yMax")));
-    }else{
-      this.svg.selectAll('.yAxis')
-      .call(d3Axis.axisLeft(this.scaleY));
-    }
-    this.svg.selectAll('.xAxis').call(d3.axisBottom(this.scaleX));
-    this.svg.selectAll('.currentTimeLine').remove();
-    this.svg.selectAll('.currentTimeSelector').remove();
-    this.updateLine();
-    this.drawLineCurrentTime();
-    this.updateScrollbar(this.minTime,this.maxTime);
-    this.updateToolTips();
-    for(let index=this.dataZoom.length; index<this.lastDatalength; index++){
-      this.svg.selectAll('.line'+index).remove();
-      this.svg.selectAll('.area'+index).remove();
-    }
-    this.lastDatalength=this.dataZoom.length;
-  }
-
-  private updateSvg(min: number, max: number){
-    this.scaleX.domain([min,max]);
-    this.svg.selectAll('.xAxis').call(d3.axisBottom(this.scaleX));
-    this.updateLine();
-    this.updateCurrentTime();
-    this.updateScrollbar(min,max);
-  }
-
-  private updateLine(): void{
-    let lineUpdate;
-    let areaUpdate;
-    this.dataZoom.forEach((element,index) => {
-      if(element.style=="area" || element.style=="both"){
-        areaUpdate= this.svg.selectAll('.area'+index).data([this.dataZoom[index].values]);
-        areaUpdate
-        .enter()
-        .append("path")
-        .attr('class', 'area'+index)
-        .merge(areaUpdate)
-        .attr('d', this.area[index])
-        .attr("stroke-width", 0.1)
-        .attr('opacity', 0.3)
-        .style('fill', element.color)
-        .style('stroke', element.color)
-        .style('stroke-width', '2px');
-      }
-      if(element.style=="line" || element.style=="both"){
-        lineUpdate= this.svg.selectAll('.line'+index).data([this.dataZoom[index].values]);
-        lineUpdate
-        .enter()
-        .append("path")
-        .attr('class', 'line'+index)
-        .merge(lineUpdate)
-        .attr('d', this.line[index])
-        .style('fill', 'none')
-        .style('stroke', element.color)
-        .style('stroke-width', '2px')
-      }
-    });
-  }
-
-  private updateCurrentTime(): void{
-    let lineUpdate = this.svg.selectAll('.currentTimeLine').datum([[this.currentTime,this.domainLocal[0]],[this.currentTime,this.height]]);
-    let x:number=0;
-    lineUpdate.enter()
-    .append("path")
-    .attr('class', 'currentTimeLine')
-    .merge(lineUpdate)
-    .attr('d', d3.line()
-      .x((d: number[]) => x=this.scaleX(d[0]))
-      .y((d: number[]) => this.scaleY(d[1])))
-    .style('fill', 'none')
-    .style('stroke', 'red')
-    .style('stroke-width', '3px');
-    if(this.currentTime>=this.scale(this.dataZoom,"xMin")&&this.currentTime<=this.scale(this.dataZoom,"xMax")){
-      this.svg.selectAll('.currentTimeLine').attr('display','block');
-      this.svg.selectAll('.currentTimeSelector').attr('display','block');
-    }else{
-      this.svg.selectAll('.currentTimeLine').attr('display','none');
-      this.svg.selectAll('.currentTimeSelector').attr('display','none');
-    }
-    this.svg.selectAll('.currentTimeSelector').attr('cx',x);
-  }
-
-  private updateScrollbar(min:number, max:number): void{
-    this.scrollbar.nativeElement.style.marginLeft= this.width*(min-this.minTime)/(this.lengthTime) + "px";
-    this.scrollbar.nativeElement.style.width= this.width*(max-min)/(this.lengthTime) + "px";
-  }
-
-  public activeScrollbar(event: MouseEvent): void{
-    this.scrollbarSelected=true;
-    this.lastPos=event.clientX-this.margin.left;
-  }
-
-  public desactiveScrollbar(): void{
-    this.scrollbarSelected=false;
-    this.lastPos=0;
-  }
-
-  public updateRange(event: MouseEvent): void{
-    if(this.scrollbarSelected){
-      event.preventDefault();
-      let lengthLocalTime = this.range[1]-this.range[0];
-      let lastMinLocalTime = this.scale(this.dataZoom,"xMin");
-      let pos = event.clientX-this.margin.left;
-      if(this.lastPos==0){
-        this.lastPos= pos;
-      }
-      let minLocalTime = (pos-this.lastPos)*this.lengthTime/this.width + lastMinLocalTime;
-      this.range = this.controlRange(minLocalTime,lengthLocalTime);
-      this.updateDataZoom(this.range[0],this.range[1]);
-      this.updateSvg(this.range[0],this.range[1]);
-      this.rangeChange.emit(this.range);
-      this.lastPos=pos;
-    }
-  }
   
   private buildZoom(): void{
     this.minTime = this.scale(this.data,"xMin");
@@ -379,12 +146,7 @@ export class TimelineComponent implements OnInit {
     this.idZoom=0;
   }
 
-  private updateToolTips(): void{
-    this.tooltip.remove();
-    this.addToolTips();
-  }
-  
-  private addToolTips(): void{ //creer le tooltips
+  private buildToolTips(): void{ //creer le tooltips
     this.tooltip = this.svg.append("g")
         .attr("id", "tooltip")
         .style("display", "none");
@@ -456,6 +218,260 @@ export class TimelineComponent implements OnInit {
     }
   }
 
+  private drawAxis(): void{
+    this.scaleX.range([0, this.width]);
+    this.scaleX.domain([this.minTime,this.maxTime]);
+    this.scaleY = d3Scale.scaleLinear();
+    this.scaleY.range([this.height, 0]);
+    this.scaleY.domain(this.controlDomain());
+    // Configure the X Axis
+    this.svg.append('g')
+      .attr('transform', 'translate(0,' + this.height + ')')
+      .attr('class', 'xAxis')
+      .call(d3Axis.axisBottom(this.scaleX));
+    // Configure the Y Axis
+    if(this.discreteValue(this.data)){
+      this.svg.append('g')
+      .attr('class', 'yAxis')
+      .call(d3Axis.axisLeft(this.scaleY).ticks(this.scale(this.data,"yMax")));
+    }else{
+      this.svg.append('g')
+      .attr('class', 'yAxis')
+      .call(d3Axis.axisLeft(this.scaleY));
+    }
+  }
+
+  private drawLineAndPath(): void{
+    this.dataZoom.forEach(
+      (element,index) => {
+        if(element.style=="area" || element.style=="both"){
+          this.svg.append('path')
+          .datum(this.dataZoom[index].values)
+          .attr('class', 'area'+index)
+          .attr('d', this.area[index])
+          .attr("stroke-width", 0.1)
+          .attr('opacity', 0.3)
+          .style('fill', element.color)
+          .style('stroke', element.color)
+          .style('stroke-width', '2px')
+        }
+        if(element.style=="line" || element.style=="both"){
+          this.svg.append('path')
+          .datum(element.values)
+          .attr('class', 'line'+index)
+          .attr('d', this.line[index])
+          .style('fill', 'none')
+          .style('stroke', element.color)
+          .style('stroke-width', '2px')
+        }
+      }
+    )
+  }
+
+  private drawLineCurrentTime(): void{
+    if(this.data.length!=0){
+      if(this.currentTime==0){
+        this.currentTime = this.scale(this.data,"xMin");
+      }
+      let x:number=0;
+      this.svg.append('path')
+        .datum([[this.currentTime,this.controlDomain()[0]],[this.currentTime,this.height]])
+        .attr('class', 'currentTimeLine')
+        .attr('d', d3.line()
+          .x((d: number[]) => x=this.scaleX(d[0]))
+          .y((d: number[]) => this.scaleY(d[1])))
+        .style('fill', 'none')
+        .style('stroke', 'red')
+        .style('stroke-width', '3px');
+      this.svg.append('circle')
+        .attr('class', 'currentTimeSelector')
+        .attr('cx', x)
+        .attr('cy', -13)
+        .attr('r', 7)
+        .attr('fill', 'red')
+        .on("mousedown", () => {
+          this.currentTimeSelected=true;
+          this.hideInfo();
+        })
+    }
+  }
+
+  private drawScrollbar(): void{
+    this.zoneScrollbar.nativeElement.style.width = this.width+"px";
+    this.zoneScrollbar.nativeElement.style.marginLeft = this.margin.left+ "px";
+    this.zoneScrollbar.nativeElement.style.height = "20px";
+    this.zoneScrollbar.nativeElement.style.backgroundColor = "lightgrey";
+    this.zoneScrollbar.nativeElement.style.borderRadius = "10px";
+    this.scrollbar.nativeElement.style.width = this.width+"px";
+    this.scrollbar.nativeElement.style.height = "20px";
+    this.scrollbar.nativeElement.style.backgroundColor = "grey";
+    this.scrollbar.nativeElement.style.borderRadius = "10px";
+    this.renderer.listen(this.scrollbar.nativeElement, 'mousedown', (event:MouseEvent) => this.activeScrollbar(event));
+    this.renderer.listen(this.zoneScrollbar.nativeElement, 'mouseleave', () => this.desactiveScrollbar());
+    this.renderer.listen(this.zoneScrollbar.nativeElement, 'mouseup', () => this.desactiveScrollbar());
+    this.renderer.listen(this.zoneScrollbar.nativeElement,'mousemove', (event:MouseEvent) => this.updateRange(event));
+  }
+  
+  private updateChart(): void{
+    this.dataZoom = [...this.data];
+    this.data.forEach(
+      (element,index) => {
+        this.buildStyleData(element,index);
+        if(element.style=="area") this.svg.selectAll('.line'+index).remove();
+        if(element.style=="line") this.svg.selectAll('.area'+index).remove();
+        this.title = 'Timeline : ';
+        if(index==this.data.length-1) this.title = this.title+element.label+'.';
+        else this.title = this.title+element.label + ', ';
+    })
+    this.buildZoom();
+    this.scaleX.domain([this.minTime,this.maxTime]);
+    this.scaleY.range([this.height, 0]);
+    this.controlDomain();
+    this.scaleY.domain(this.controlDomain());
+    if(this.discreteValue(this.data)){
+      this.svg.selectAll('.yAxis')
+      .call(d3Axis.axisLeft(this.scaleY).ticks(this.scale(this.data,"yMax")));
+    }else{
+      this.svg.selectAll('.yAxis')
+      .call(d3Axis.axisLeft(this.scaleY));
+    }
+    this.svg.selectAll('.xAxis').call(d3.axisBottom(this.scaleX));
+    this.svg.selectAll('.currentTimeLine').remove();
+    this.svg.selectAll('.currentTimeSelector').remove();
+    this.updateLine();
+    this.drawLineCurrentTime();
+    this.updateScrollbar(this.minTime,this.maxTime);
+    this.updateToolTips();
+    for(let index=this.dataZoom.length; index<this.lastDatalength; index++){
+      this.svg.selectAll('.line'+index).remove();
+      this.svg.selectAll('.area'+index).remove();
+    }
+    this.lastDatalength=this.dataZoom.length;
+  }
+
+  private updateSvg(min: number, max: number){
+    this.scaleX.domain([min,max]);
+    this.svg.selectAll('.xAxis').call(d3.axisBottom(this.scaleX));
+    this.updateLine();
+    this.updateCurrentTime();
+    this.updateScrollbar(min,max);
+  }
+
+  private updateLine(): void{
+    let lineUpdate;
+    let areaUpdate;
+    this.dataZoom.forEach((element,index) => {
+      if(element.style=="area" || element.style=="both"){
+        areaUpdate= this.svg.selectAll('.area'+index).data([this.dataZoom[index].values]);
+        areaUpdate
+        .enter()
+        .append("path")
+        .attr('class', 'area'+index)
+        .merge(areaUpdate)
+        .attr('d', this.area[index])
+        .attr("stroke-width", 0.1)
+        .attr('opacity', 0.3)
+        .style('fill', element.color)
+        .style('stroke', element.color)
+        .style('stroke-width', '2px');
+      }
+      if(element.style=="line" || element.style=="both"){
+        lineUpdate= this.svg.selectAll('.line'+index).data([this.dataZoom[index].values]);
+        lineUpdate
+        .enter()
+        .append("path")
+        .attr('class', 'line'+index)
+        .merge(lineUpdate)
+        .attr('d', this.line[index])
+        .style('fill', 'none')
+        .style('stroke', element.color)
+        .style('stroke-width', '2px')
+      }
+    });
+  }
+
+  private updateCurrentTime(): void{
+    let lineUpdate = this.svg.selectAll('.currentTimeLine').datum([[this.currentTime,this.controlDomain()[0]],[this.currentTime,this.height]]);
+    let x:number=0;
+    lineUpdate.enter()
+    .append("path")
+    .attr('class', 'currentTimeLine')
+    .merge(lineUpdate)
+    .attr('d', d3.line()
+      .x((d: number[]) => x=this.scaleX(d[0]))
+      .y((d: number[]) => this.scaleY(d[1])))
+    .style('fill', 'none')
+    .style('stroke', 'red')
+    .style('stroke-width', '3px');
+    if(this.currentTime>=this.scale(this.dataZoom,"xMin")&&this.currentTime<=this.scale(this.dataZoom,"xMax")){
+      this.svg.selectAll('.currentTimeLine').attr('display','block');
+      this.svg.selectAll('.currentTimeSelector').attr('display','block');
+    }else{
+      this.svg.selectAll('.currentTimeLine').attr('display','none');
+      this.svg.selectAll('.currentTimeSelector').attr('display','none');
+    }
+    this.svg.selectAll('.currentTimeSelector').attr('cx',x);
+  }
+
+  private updateScrollbar(min:number, max:number): void{
+    this.scrollbar.nativeElement.style.marginLeft= this.width*(min-this.minTime)/(this.lengthTime) + "px";
+    this.scrollbar.nativeElement.style.width= this.width*(max-min)/(this.lengthTime) + "px";
+  }
+
+  private updateRange(event: MouseEvent): void{
+    if(this.scrollbarSelected){
+      event.preventDefault();
+      let lengthLocalTime = this.range[1]-this.range[0];
+      let lastMinLocalTime = this.scale(this.dataZoom,"xMin");
+      let pos = event.clientX-this.margin.left;
+      if(this.lastPos==0){
+        this.lastPos= pos;
+      }
+      let minLocalTime = (pos-this.lastPos)*this.lengthTime/this.width + lastMinLocalTime;
+      this.range = this.controlRange(minLocalTime,lengthLocalTime);
+      this.updateDataZoom(this.range[0],this.range[1]);
+      this.updateSvg(this.range[0],this.range[1]);
+      this.rangeChange.emit(this.range);
+      this.lastPos=pos;
+    }
+  }
+  
+  private updateDataZoom(min:number,max:number): void{
+    this.data.forEach((element,index) => {
+      this.dataZoom[index]={
+        label: element.label,
+        values: element.values.filter((element: number[]) => min <= element[0] && element[0] <=  max),
+        color: element.color,
+        style: element.style,
+        interpolation: element.interpolation
+    }}) 
+    let time: number[];
+    this.data.forEach((element,index) => {
+      time=[];
+      element.values.forEach((element => time.push(element[0])));
+      let i = d3.bisectLeft(time, min)-1;
+      if(i>=0&&i<this.data[index].values.length){
+        this.dataZoom[index].values.unshift([min,(this.data[index].values[i][1])]);
+      }
+      this.dataZoom[index].values.push([max,this.dataZoom[index].values[this.dataZoom[index].values.length-1][1]]);
+    })
+  }
+
+  private updateToolTips(): void{
+    this.tooltip.remove();
+    this.buildToolTips();
+  }
+  
+  private activeScrollbar(event: MouseEvent): void{
+    this.scrollbarSelected=true;
+    this.lastPos=event.clientX-this.margin.left;
+  }
+
+  private desactiveScrollbar(): void{
+    this.scrollbarSelected=false;
+    this.lastPos=0;
+  }
+
   private showInfo(event: MouseEvent): void{ // fonction qui affiche le tooltips
     let time: number[] = [];
     if (this.dataZoom[0] != undefined) {
@@ -500,7 +516,7 @@ export class TimelineComponent implements OnInit {
     this.tooltip.style("display", "none");
   }
 
-  private zoom(event: WheelEvent): void{
+  private activeZoom(event: WheelEvent): void{
     event.preventDefault();
     let lastLengthLocalTime = this.lengthTime / Math.pow(1.5,this.idZoom);
     let lastMinLocalTime = this.scale(this.dataZoom,"xMin");
@@ -524,25 +540,18 @@ export class TimelineComponent implements OnInit {
     }
   }
 
-  private updateDataZoom(min:number,max:number): void{
-    this.data.forEach((element,index) => {
-      this.dataZoom[index]={
-        label: element.label,
-        values: element.values.filter((element: number[]) => min <= element[0] && element[0] <=  max),
-        color: element.color,
-        style: element.style,
-        interpolation: element.interpolation
-    }}) 
-    let time: number[];
-    this.data.forEach((element,index) => {
-      time=[];
-      element.values.forEach((element => time.push(element[0])));
-      let i = d3.bisectLeft(time, min)-1;
-      if(i>=0&&i<this.data[index].values.length){
-        this.dataZoom[index].values.unshift([min,(this.data[index].values[i][1])]);
-      }
-      this.dataZoom[index].values.push([max,this.dataZoom[index].values[this.dataZoom[index].values.length-1][1]]);
-    })
+  private moveCurrentTime(event: MouseEvent): void{
+    event.preventDefault();
+    let pos = this.scaleX.invert(event.clientX-this.margin.left).getTime();
+    if(pos<this.scale(this.dataZoom,"xMin")){
+      this.currentTime=this.scale(this.dataZoom,"xMin");
+    }else if(pos>this.scale(this.dataZoom,"xMax")){
+      this.currentTime=this.scale(this.dataZoom,"xMax");
+    }else{
+      this.currentTime=pos;
+    }
+    this.updateCurrentTime();
+    this.currentTimeChange.emit(this.currentTime);
   }
 
   private controlRange(min:number, length:number) : [number,number]{
@@ -560,18 +569,12 @@ export class TimelineComponent implements OnInit {
     return [min,max];
   }
 
-  private moveCurrentTime(event: MouseEvent): void{
-    event.preventDefault();
-    let pos = this.scaleX.invert(event.clientX-this.margin.left).getTime();
-    if(pos<this.scale(this.dataZoom,"xMin")){
-      this.currentTime=this.scale(this.dataZoom,"xMin");
-    }else if(pos>this.scale(this.dataZoom,"xMax")){
-      this.currentTime=this.scale(this.dataZoom,"xMax");
+  private controlDomain():[number,number]{
+    if((this.domain[0]==0&&this.domain[1]==0)||this.discreteValue(this.data)){
+      return [this.scale(this.data,"yMin"),this.scale(this.data,"yMax")];
     }else{
-      this.currentTime=pos;
+      return this.domain;
     }
-    this.updateCurrentTime();
-    this.currentTimeChange.emit(this.currentTime);
   }
 
   private scale(d: Data[], s: "xMin" | "xMax" | "yMin" | "yMax"): number {
