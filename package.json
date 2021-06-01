@@ -7,7 +7,8 @@
     "build": "ng build",
     "test": "ng test",
     "lint": "ng lint",
-    "e2e": "ng e2e"
+    "e2e": "ng e2e",
+    "compodoc": "./node_modules/.bin/compodoc -p tsconfig.json -w -s --language [fr-FR]"
   },
   "private": true,
   "dependencies": {
@@ -24,7 +25,8 @@
     "d3": "^6.5.0",
     "rxjs": "~6.6.0",
     "tslib": "^2.0.0",
-    "zone.js": "~0.11.3"
+    "zone.js": "~0.11.3",
+    "@compodoc/compodoc": "1.1.11"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "~0.1102.1",

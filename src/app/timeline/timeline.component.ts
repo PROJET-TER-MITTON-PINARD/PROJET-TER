@@ -2,8 +2,6 @@ import { Component, OnInit , Input, ViewChild, ElementRef, SimpleChanges, Output
 import {ScaleTime, ScaleLinear} from 'd3-scale';
 import {Selection} from 'd3-selection'
 import * as d3 from 'd3';
-import * as d3Scale from 'd3';
-import * as d3Axis from 'd3';
 import { roundDecimal } from 'src/tools';
 
 export interface Data {
@@ -21,8 +19,8 @@ export interface Data {
 })
 
 export class TimelineComponent implements OnInit {
-  @Input() Nwidth: number = 900;
-  @Input() Nheight: number = 200; 
+  @Input() width: number = 900;
+  @Input() height: number = 200; 
   @Input() data: Data[] = [];
   @Input() domain: [number, number] = [0,0];
   @ViewChild('root') timeline!: ElementRef;
@@ -40,10 +38,10 @@ export class TimelineComponent implements OnInit {
   private minTime: number = 0;
   private maxTime: number = 0;
   private lengthTime: number = 0;
-  private width: number = 0;
-  private height: number = 0;
-  private scaleX: ScaleTime<number,number> = d3Scale.scaleTime();
-  private scaleY: ScaleLinear<number,number> = d3Scale.scaleLinear();
+  private svgWidth: number = 0;
+  private svgHeight: number = 0;
+  private scaleX: ScaleTime<number,number> = d3.scaleTime();
+  private scaleY: ScaleLinear<number,number> = d3.scaleLinear();
   private svg: any;
   private area: d3.Area<[number, number]>[] = [];
   private line: d3.Line<[number, number]>[] = [];
@@ -54,9 +52,13 @@ export class TimelineComponent implements OnInit {
   private scrollbarSelected:boolean = false;
   private lastPos: number = 0;
   
+  
   constructor(private renderer: Renderer2) {   
   }
 
+  /**
+   * Copy data in dataZoom, and build title 
+   */
   public ngOnInit(): void {
     this.dataZoom = [...this.data];
     this.lastDatalength=this.dataZoom.length;
@@ -66,23 +68,30 @@ export class TimelineComponent implements OnInit {
     })
   }
 
-  public ngAfterViewInit(): void { //after le render pour recuperer les valeurs transmise au sein de la balise html 
+  /**
+   * Initialize linechart
+   */
+  public ngAfterViewInit(): void {
     if (this.timeline != undefined) {
       let w = this.timeline.nativeElement.width.animVal.value;
       let h = this.timeline.nativeElement.height.animVal.value;
-      this.width = (w - this.margin.left) - this.margin.right;
-      this.height = (h - this.margin.top) - this.margin.bottom;
+      this.svgWidth = (w - this.margin.left) - this.margin.right;
+      this.svgHeight = (h - this.margin.top) - this.margin.bottom;
     }
     this.data.forEach((element,index) => this.buildStyleData(element,index));
     this.buildZoom(); 
     this.buildEvent();
+    this.drawToolTips();
     this.drawAxis();
     this.drawLineAndPath();
-    this.buildToolTips();
     this.drawLineCurrentTime();
     this.drawScrollbar();
   }
 
+  /**
+   * Update linechart on data, range or current time changes
+   * @param {SimpleChanges} changes 
+   */
   public ngOnChanges(changes: SimpleChanges): void {
     if (changes.data&&!changes.data.firstChange) this.updateChart();
     if ((changes.data&&!changes.data.firstChange&&this.range[0]!=0&&this.range[1]!=0)||(changes.range&&!changes.range.firstChange)) {
@@ -95,7 +104,10 @@ export class TimelineComponent implements OnInit {
     }
     if (changes.currentTime&&!changes.currentTime.firstChange&&this.data.length!=0) this.updateCurrentTime();
 }
-  
+
+  /**
+   * Add event listeners on the svg
+   */
   private buildEvent(): void{ // creer une timeline avec une seul donnée
     this.svg = d3.select(this.timeline.nativeElement)
     .append('g')
@@ -109,19 +121,24 @@ export class TimelineComponent implements OnInit {
     .on("mouseup", () => this.currentTimeSelected=false)
     .on("mouseover", (event: MouseEvent) => event.preventDefault());
   }
-  
+
+  /**
+   * Build the style (area, line or both) and the interpolation (stpe or linear) of lines
+   * @param {Data} element 
+   * @param {number} index 
+   */
   private buildStyleData(element:Data, index:number): void{
     if(element.style=="area" || element.style=="both"){
       if(element.interpolation=="step"){
         this.area[index]=d3.area()
         .x((d: number[]) => this.scaleX(d[0]))
-        .y0(this.height)
+        .y0(this.svgHeight)
         .y1((d: number[]) => this.scaleY(d[1]))
         .curve(d3.curveStepAfter);
       }else{
         this.area[index]=d3.area()
         .x((d: number[]) => this.scaleX(d[0]))
-        .y0(this.height)
+        .y0(this.svgHeight)
         .y1((d: number[]) => this.scaleY(d[1]))
       }
     }
@@ -138,7 +155,10 @@ export class TimelineComponent implements OnInit {
       }
     }   
   }
-  
+
+  /**
+   * Save information for zoom.
+   */
   private buildZoom(): void{
     this.minTime = this.scale(this.data,"xMin");
     this.maxTime = this.scale(this.data,"xMax");
@@ -146,7 +166,10 @@ export class TimelineComponent implements OnInit {
     this.idZoom=0;
   }
 
-  private buildToolTips(): void{ //creer le tooltips
+  /**
+   * Draw the tooltips's svg
+   */
+  private drawToolTips(): void{ //creer le tooltips
     this.tooltip = this.svg.append("g")
         .attr("id", "tooltip")
         .style("display", "none");
@@ -218,29 +241,35 @@ export class TimelineComponent implements OnInit {
     }
   }
 
+  /**
+   * Draw horizontal and vertical axis and scale
+   */
   private drawAxis(): void{
-    this.scaleX.range([0, this.width]);
+    this.scaleX.range([0, this.svgWidth]);
     this.scaleX.domain([this.minTime,this.maxTime]);
-    this.scaleY = d3Scale.scaleLinear();
-    this.scaleY.range([this.height, 0]);
+    this.scaleY = d3.scaleLinear();
+    this.scaleY.range([this.svgHeight, 0]);
     this.scaleY.domain(this.controlDomain());
     // Configure the X Axis
     this.svg.append('g')
-      .attr('transform', 'translate(0,' + this.height + ')')
+      .attr('transform', 'translate(0,' + this.svgHeight + ')')
       .attr('class', 'xAxis')
-      .call(d3Axis.axisBottom(this.scaleX));
+      .call(d3.axisBottom(this.scaleX));
     // Configure the Y Axis
     if(this.discreteValue(this.data)){
       this.svg.append('g')
       .attr('class', 'yAxis')
-      .call(d3Axis.axisLeft(this.scaleY).ticks(this.scale(this.data,"yMax")));
+      .call(d3.axisLeft(this.scaleY).ticks(this.scale(this.data,"yMax")));
     }else{
       this.svg.append('g')
       .attr('class', 'yAxis')
-      .call(d3Axis.axisLeft(this.scaleY));
+      .call(d3.axisLeft(this.scaleY));
     }
   }
 
+  /**
+   * Draw lines on the line chart
+   */
   private drawLineAndPath(): void{
     this.dataZoom.forEach(
       (element,index) => {
@@ -268,6 +297,9 @@ export class TimelineComponent implements OnInit {
     )
   }
 
+  /**
+   * Draw the vertical line which represents the current time
+   */
   private drawLineCurrentTime(): void{
     if(this.data.length!=0){
       if(this.currentTime==0){
@@ -275,7 +307,7 @@ export class TimelineComponent implements OnInit {
       }
       let x:number=0;
       this.svg.append('path')
-        .datum([[this.currentTime,this.controlDomain()[0]],[this.currentTime,this.height]])
+        .datum([[this.currentTime,this.controlDomain()[0]],[this.currentTime,this.svgHeight]])
         .attr('class', 'currentTimeLine')
         .attr('d', d3.line()
           .x((d: number[]) => x=this.scaleX(d[0]))
@@ -296,13 +328,16 @@ export class TimelineComponent implements OnInit {
     }
   }
 
+  /**
+   * Draw the scrollbar and event listener on it  
+   */
   private drawScrollbar(): void{
-    this.zoneScrollbar.nativeElement.style.width = this.width+"px";
+    this.zoneScrollbar.nativeElement.style.width = this.svgWidth+"px";
     this.zoneScrollbar.nativeElement.style.marginLeft = this.margin.left+ "px";
     this.zoneScrollbar.nativeElement.style.height = "20px";
     this.zoneScrollbar.nativeElement.style.backgroundColor = "lightgrey";
     this.zoneScrollbar.nativeElement.style.borderRadius = "10px";
-    this.scrollbar.nativeElement.style.width = this.width+"px";
+    this.scrollbar.nativeElement.style.width = this.svgWidth+"px";
     this.scrollbar.nativeElement.style.height = "20px";
     this.scrollbar.nativeElement.style.backgroundColor = "grey";
     this.scrollbar.nativeElement.style.borderRadius = "10px";
@@ -311,7 +346,10 @@ export class TimelineComponent implements OnInit {
     this.renderer.listen(this.zoneScrollbar.nativeElement, 'mouseup', () => this.desactiveScrollbar());
     this.renderer.listen(this.zoneScrollbar.nativeElement,'mousemove', (event:MouseEvent) => this.updateRange(event));
   }
-  
+
+  /**
+   * Update all the line chart (horizontal and vertical axis and scale, data, lines and range) on data changes. 
+   */
   private updateChart(): void{
     this.dataZoom = [...this.data];
     this.data.forEach(
@@ -325,15 +363,15 @@ export class TimelineComponent implements OnInit {
     })
     this.buildZoom();
     this.scaleX.domain([this.minTime,this.maxTime]);
-    this.scaleY.range([this.height, 0]);
+    this.scaleY.range([this.svgHeight, 0]);
     this.controlDomain();
     this.scaleY.domain(this.controlDomain());
     if(this.discreteValue(this.data)){
       this.svg.selectAll('.yAxis')
-      .call(d3Axis.axisLeft(this.scaleY).ticks(this.scale(this.data,"yMax")));
+      .call(d3.axisLeft(this.scaleY).ticks(this.scale(this.data,"yMax")));
     }else{
       this.svg.selectAll('.yAxis')
-      .call(d3Axis.axisLeft(this.scaleY));
+      .call(d3.axisLeft(this.scaleY));
     }
     this.svg.selectAll('.xAxis').call(d3.axisBottom(this.scaleX));
     this.svg.selectAll('.currentTimeLine').remove();
@@ -349,6 +387,11 @@ export class TimelineComponent implements OnInit {
     this.lastDatalength=this.dataZoom.length;
   }
 
+  /**
+   * Update horizontal axis, current time line, lines and scrollbar
+   * @param {number} min of the new range
+   * @param {number} max of the new range
+   */
   private updateSvg(min: number, max: number){
     this.scaleX.domain([min,max]);
     this.svg.selectAll('.xAxis').call(d3.axisBottom(this.scaleX));
@@ -357,6 +400,9 @@ export class TimelineComponent implements OnInit {
     this.updateScrollbar(min,max);
   }
 
+  /**
+   * Update the display of lines
+   */
   private updateLine(): void{
     let lineUpdate;
     let areaUpdate;
@@ -390,8 +436,11 @@ export class TimelineComponent implements OnInit {
     });
   }
 
+  /**
+   * Update the position of the current time line
+   */
   private updateCurrentTime(): void{
-    let lineUpdate = this.svg.selectAll('.currentTimeLine').datum([[this.currentTime,this.controlDomain()[0]],[this.currentTime,this.height]]);
+    let lineUpdate = this.svg.selectAll('.currentTimeLine').datum([[this.currentTime,this.controlDomain()[0]],[this.currentTime,this.svgHeight]]);
     let x:number=0;
     lineUpdate.enter()
     .append("path")
@@ -413,11 +462,20 @@ export class TimelineComponent implements OnInit {
     this.svg.selectAll('.currentTimeSelector').attr('cx',x);
   }
 
+  /**
+   * Update the position of the scrollbar
+   * @param {number} min of the new range
+   * @param {number} max of the new range
+   */
   private updateScrollbar(min:number, max:number): void{
-    this.scrollbar.nativeElement.style.marginLeft= this.width*(min-this.minTime)/(this.lengthTime) + "px";
-    this.scrollbar.nativeElement.style.width= this.width*(max-min)/(this.lengthTime) + "px";
+    this.scrollbar.nativeElement.style.marginLeft= this.svgWidth*(min-this.minTime)/(this.lengthTime) + "px";
+    this.scrollbar.nativeElement.style.width= this.svgWidth*(max-min)/(this.lengthTime) + "px";
   }
 
+  /**
+   * Change the range, control it, update datas, update the linechart and then emit the new range.
+   * @param {MouseEvent} event 
+   */
   private updateRange(event: MouseEvent): void{
     if(this.scrollbarSelected){
       event.preventDefault();
@@ -427,7 +485,7 @@ export class TimelineComponent implements OnInit {
       if(this.lastPos==0){
         this.lastPos= pos;
       }
-      let minLocalTime = (pos-this.lastPos)*this.lengthTime/this.width + lastMinLocalTime;
+      let minLocalTime = (pos-this.lastPos)*this.lengthTime/this.svgWidth + lastMinLocalTime;
       this.range = this.controlRange(minLocalTime,lengthLocalTime);
       this.updateDataZoom(this.range[0],this.range[1]);
       this.updateSvg(this.range[0],this.range[1]);
@@ -435,7 +493,12 @@ export class TimelineComponent implements OnInit {
       this.lastPos=pos;
     }
   }
-  
+
+  /**
+   * Change this.dataZoom at range changes
+   * @param {number} min of the new range
+   * @param {number} max of the new range 
+   */
   private updateDataZoom(min:number,max:number): void{
     this.data.forEach((element,index) => {
       this.dataZoom[index]={
@@ -457,22 +520,36 @@ export class TimelineComponent implements OnInit {
     })
   }
 
+  /**
+   * Remove and build a new tooltips
+   */
   private updateToolTips(): void{
     this.tooltip.remove();
-    this.buildToolTips();
+    this.drawToolTips();
   }
-  
+
+  /**
+   * Active movement of scrollbar on mousedown on it
+   * @param {MouseEvent} event 
+   */ 
   private activeScrollbar(event: MouseEvent): void{
     this.scrollbarSelected=true;
     this.lastPos=event.clientX-this.margin.left;
   }
 
+  /**
+   * Desactive movement of scrollbar on mouseup or mouseleave on it
+   */
   private desactiveScrollbar(): void{
     this.scrollbarSelected=false;
     this.lastPos=0;
   }
 
-  private showInfo(event: MouseEvent): void{ // fonction qui affiche le tooltips
+  /**
+   * Show the tooltips on the movement of the mouse
+   * @param {MouseEvent} event 
+   */
+  private showInfo(event: MouseEvent): void{
     let time: number[] = [];
     if (this.dataZoom[0] != undefined) {
       this.dataZoom[0].values.forEach((element) => time.push(element[0]));
@@ -511,11 +588,18 @@ export class TimelineComponent implements OnInit {
     }
     
   }
-    
-  private hideInfo(): void{ //fonction qui cache le tooltips
+
+  /**
+   * Hide the tooltips when the mouse leave the svg 
+   */   
+  private hideInfo(): void{
     this.tooltip.style("display", "none");
   }
 
+  /**
+   * Update the range (reduce or increase) of the linechart on scroll 
+   * @param {WheelEvent} event 
+   */
   private activeZoom(event: WheelEvent): void{
     event.preventDefault();
     let lastLengthLocalTime = this.lengthTime / Math.pow(1.5,this.idZoom);
@@ -540,6 +624,10 @@ export class TimelineComponent implements OnInit {
     }
   }
 
+  /**
+   * Update the value of current time on the movement of the mouse
+   * @param {MouseEvent} event 
+   */
   private moveCurrentTime(event: MouseEvent): void{
     event.preventDefault();
     let pos = this.scaleX.invert(event.clientX-this.margin.left).getTime();
@@ -554,21 +642,27 @@ export class TimelineComponent implements OnInit {
     this.currentTimeChange.emit(this.currentTime);
   }
 
+  /**
+   * Control the range based on data's timestamp and the new range
+   * @param {number} min of the new range
+   * @param {number} length of the new range
+   * @returns a adjusted range based on data's timestamp
+   */
   private controlRange(min:number, length:number) : [number,number]{
-    if(this.minTime>min){
-      min=this.minTime;
-    }
+    if(this.minTime>min) min=this.minTime;
     let max = min + length;
     if(this.maxTime<max){
       max=this.maxTime;
       min=max - length;
     }
-    if(this.minTime>min){
-      min=this.minTime;
-    }
+    if(this.minTime>min) min=this.minTime;
     return [min,max];
   }
 
+  /**
+   * Control the domain based on data's value type and the input domain
+   * @returns a new domain auto-scaled if the input domain is equal to [0,0] or the data's value are positive integers, else return the input domain 
+   */
   private controlDomain():[number,number]{
     if((this.domain[0]==0&&this.domain[1]==0)||this.discreteValue(this.data)){
       return [this.scale(this.data,"yMin"),this.scale(this.data,"yMax")];
@@ -577,9 +671,15 @@ export class TimelineComponent implements OnInit {
     }
   }
 
-  private scale(d: Data[], s: "xMin" | "xMax" | "yMin" | "yMax"): number {
+  /** 
+   * Determine the minimum or maximum of the horizontal or vertical axis in data
+   * @param {Data[]} data Array of Data
+   * @param {"xMin" | "xMax" | "yMin" | "yMax"} s precise wihch scale we want
+   * @returns the value that matches with the parameter s in data
+   */
+  private scale(data: Data[], s: "xMin" | "xMax" | "yMin" | "yMax"): number {
     let res: number = 0;
-    d.forEach(
+    data.forEach(
       (elements,index) => elements.values.forEach
       ((element,i) => {
         if((s=="yMin"&&((i==0&&index==0)||element[1]<res))||(s=="yMax"&&((i==0&&index==0)||element[1]>res))) res=element[1];
@@ -589,12 +689,23 @@ export class TimelineComponent implements OnInit {
     return res;
   }
 
-  private discreteValue(d: Data[]): boolean{
-    for(let i:number=0;i<d.length;i++){
-      for(let j:number=0;j<d[i].values.length;j++){
-        if(d[i].values[j][1]!=Math.round(d[i].values[j][1])) return false;
+  /** 
+  *Check type of data (positive integer or float)
+  *@param {Data[]} data Array of Data
+  *@returns false if there is at least one value in data that's not a positive integer
+  */
+  private discreteValue(data: Data[]): boolean{
+    for(let i:number=0;i<data.length;i++){
+      for(let j:number=0;j<data[i].values.length;j++){
+        if(data[i].values[j][1]!=Math.round(data[i].values[j][1])) return false;
       }
     }
     return true;
+  }
+
+  public parseBool(s: string, trueValue: string, falseValue:string) {
+    if(s==trueValue) return 1;
+    else if (s==falseValue) return 0;
+    else return -1;
   }
 }

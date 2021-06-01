@@ -62,7 +62,7 @@ export class AppComponent implements OnInit {
       values: v2,
       color: "purple",
       style: "line",
-      interpolation: "linear"
+      interpolation: "step"
     }
     let d3: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"Presence_Salon", this.parseBool);
     let v3: [number,number][] = [];
