@@ -44,7 +44,7 @@ export class AppComponent implements OnInit {
     let da1: Data = {
       label: "PC6",
       values: v1,
-      color: "green",
+      color: "#123568",
       style: "both",
       interpolation: "step"
     }
@@ -60,7 +60,7 @@ export class AppComponent implements OnInit {
     let da2: Data = {
       label: "PC5",
       values: v2,
-      color: "purple",
+      color: "pur",
       style: "line",
       interpolation: "step"
     }

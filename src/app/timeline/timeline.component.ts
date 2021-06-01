@@ -2,7 +2,6 @@ import { Component, OnInit , Input, ViewChild, ElementRef, SimpleChanges, Output
 import {ScaleTime, ScaleLinear} from 'd3-scale';
 import {Selection} from 'd3-selection'
 import * as d3 from 'd3';
-import { roundDecimal } from 'src/tools';
 
 export interface Data {
   label: string;
@@ -10,6 +9,12 @@ export interface Data {
   color: string;
   style: "line" | "area" | "both";
   interpolation: "linear" | "step";
+}
+
+export function parseBool(s: string) {
+  if(s=='ON') return 1;
+  else if (s=='OFF') return 0;
+  else return -1;
 }
 
 @Component({
@@ -153,7 +158,10 @@ export class TimelineComponent implements OnInit {
         .x((d: number[]) => this.scaleX(d[0]))
         .y((d: number[]) => this.scaleY(d[1]))
       }
-    }   
+    }
+    if(!this.controlColor(element.color)){
+      element.color="black";
+    } 
   }
 
   /**
@@ -582,7 +590,7 @@ export class TimelineComponent implements OnInit {
         d3.selectAll('#tooltip-date1' + index)
           .text(date);
         d3.selectAll('#tooltip-date2' + index)
-          .text(roundDecimal(d,2));
+          .text(this.roundDecimal(d,2));
       });
       this.tooltip.attr("transform", "translate(" + this.scaleX(t) + "," + this.scaleY(d) + ")");
     }
@@ -671,6 +679,13 @@ export class TimelineComponent implements OnInit {
     }
   }
 
+  private controlColor(color: string){
+    let s = new Option().style;
+    s.color = color;
+    console.log(s.color);
+    return s.color!="";
+  }
+
   /** 
    * Determine the minimum or maximum of the horizontal or vertical axis in data
    * @param {Data[]} data Array of Data
@@ -703,9 +718,14 @@ export class TimelineComponent implements OnInit {
     return true;
   }
 
-  public parseBool(s: string, trueValue: string, falseValue:string) {
-    if(s==trueValue) return 1;
-    else if (s==falseValue) return 0;
-    else return -1;
+  /**
+   * Round a number with a precision
+   * @param {number} num 
+   * @param {number} precision 
+   * @returns a num with a number of decimal (precision)
+   */
+  private roundDecimal(num : number, precision:number): number{
+    let tmp: number = Math.pow(10, precision);
+    return Math.round( num*tmp )/tmp;
   }
 }
