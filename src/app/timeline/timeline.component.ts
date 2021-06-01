@@ -682,7 +682,6 @@ export class TimelineComponent implements OnInit {
   private controlColor(color: string){
     let s = new Option().style;
     s.color = color;
-    console.log(s.color);
     return s.color!="";
   }
 
