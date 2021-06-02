@@ -64,7 +64,7 @@ export class AppComponent implements OnInit {
       style: "line",
       interpolation: "step"
     }
-    let d3: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"Presence_Salon", this.parseBool);
+    let d3: DATA<number>[] = this.DataServ.parse<number>(this.DataServ.str,"PC5", this.parseBool);
     let v3: [number,number][] = [];
     d3.forEach(element =>v3.push([element.timestamp,element.value]));
     let da3: Data = {
