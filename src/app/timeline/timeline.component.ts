@@ -193,58 +193,57 @@ export class TimelineComponent implements OnInit {
         .attr("r", 4);
     // Le tooltip en lui-même avec sa pointe vers le bas
     // Il faut le dimensionner en fonction du contenu
-    let taille = this.dataZoom.length;
     if (this.modeToolTips == "normal") {
       this.tooltip.append("polyline")
-        .attr("points", "0,0 0," + (40 * taille)+", 75," + (40 * taille)+", 80," + (45 * taille)+" 85," + (40 * taille)+" 160," + (40 * taille)+" 160,0 0,0")
+        .attr("points", "0,0 0,40 75,40  80,45  85,40  160,40  160,0 0,0")
         .style("fill", "#fafafa")
         .style("stroke","#3498db")
         .style("opacity","0.9")
         .style("stroke-width","1")
-        .attr("transform", "translate(-80, " + (-50 * taille) + ")");
-      this.dataZoom.forEach((element,index) => {
+        .attr("transform", "translate(-80,-50)");
+      this.dataZoom.forEach((element) => {
         // Cet élément contiendra tout notre texte
         let text = this.tooltip.append("text")
           .style("font-size", "13px")
           .style("font-family", "Segoe UI")
           .style("color", element.color)
           .style("fill", element.color)
-          .attr("transform", "translate(-80,"+(-42*(index+1))+")");
+          .attr("transform", "translate(-80,-42)");
         // Element pour la date avec positionnement spécifique
         text.append("tspan")
           .attr("dx", "7")
           .attr("dy", "5")
-          .attr("id", "tooltip-date1" + index);
+          .attr("id", "tooltip-date1");
         text.append("tspan")
           .attr("dx", "-90")
           .attr("dy", "15")
-          .attr("id", "tooltip-date2"+index);
+          .attr("id", "tooltip-date2");
       });
     }else {
       this.tooltip.append("polyline")
-        .attr("points", "0,"+(95+((taille-1) *40 ))+" , 0,55 , 75,55 , 80,50 , 85,55 , 160,55 , 160,"+(95+((taille-1) *40 ))+" 0,"+(95+((taille-1) *40 ))+"")
+        .attr("points", "0,95 , 0,55 , 75,55 , 80,50 , 85,55 , 160,55 , 160,95 0,95")
         .style("fill", "#fafafa")
         .style("stroke","#3498db")
         .style("opacity","0.9")
         .style("stroke-width","1")
-        .attr("transform", "translate(-80, " + (-50 * 1) + ")");
-      this.dataZoom.forEach((element,index) => {
+        .attr("transform", "translate(-80,-50)");
+      this.dataZoom.forEach((element) => {
         // Cet élément contiendra tout notre texte
         let text = this.tooltip.append("text")
           .style("font-size", "13px")
           .style("font-family", "Segoe UI")
           .style("color", element.color)
           .style("fill", element.color)
-          .attr("transform", "translate(-80,"+(-30*(index+1))+")");
+          .attr("transform", "translate(-80,-30)");
         // Element pour la date avec positionnement spécifique
         text.append("tspan")
           .attr("dx", "7")
-          .attr("dy", 50 + 70*index)
-          .attr("id", "tooltip-date1" + index);
+          .attr("dy", 50 )
+          .attr("id", "tooltip-date1");
         text.append("tspan")
           .attr("dx", "-80")
           .attr("dy", "20")
-          .attr("id", "tooltip-date2"+index);
+          .attr("id", "tooltip-date2");
       });
     }
   }
@@ -558,18 +557,27 @@ export class TimelineComponent implements OnInit {
    * @param {MouseEvent} event 
    */
   private showInfo(event: MouseEvent): void{
-    let time: number[] = [];
-    if (this.dataZoom[0] != undefined) {
-      this.dataZoom[0].values.forEach((element) => time.push(element[0]));
+    console.log(this.dataZoom.length);
+    if (this.dataZoom[0] != undefined && this.dataZoom.length <2) {
+      var d: number=0;
+      var t: number=0;
+        let time: number[] = [];
+        this.dataZoom[0].values.forEach((element) => time.push(element[0]));
+        let x0 = this.scaleX.invert(event.clientX - this.margin.left).getTime();
+        let x = d3.bisectRight(time, x0);
+        if(x>this.dataZoom[0].values.length-1)x=this.dataZoom[0].values.length-1;
+        else if (x < 0) x = 0;
+         d  = this.dataZoom[0].values[x][1];
+         t = this.dataZoom[0].values[x][0];
+        let date = new Date(t).toLocaleDateString("fr", { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' });
+        d3.selectAll('#tooltip-date1')
+          .text(date);
+        d3.selectAll('#tooltip-date2')
+          .text(this.roundDecimal(d, 2));
       this.tooltip.style("display","block");
       this.tooltip.style("opacity", 100);
-      let x0 = this.scaleX.invert(event.clientX - this.margin.left).getTime();
-      let x = d3.bisectRight(time, x0);
-      if(x>this.dataZoom[0].values.length-1)x=this.dataZoom[0].values.length-1;
-      else if (x < 0) x = 0;
-      let d: number = this.dataZoom[0].values[x][1];
-      let t = this.dataZoom[0].values[x][0];
-      if (this.scaleY(d) <= 40*this.dataZoom.length) {
+      this.tooltip.attr("transform", "translate(" + this.scaleX(t) + "," + this.scaleY(d) + ")");
+      if (this.scaleY(d) <= 40 * this.dataZoom.length) {
         if (this.modeToolTips != "inverse") {
           this.modeToolTips = "inverse";
           this.updateToolTips();
@@ -580,22 +588,10 @@ export class TimelineComponent implements OnInit {
           this.updateToolTips();
         }
       }
-      this.dataZoom.forEach((element, index) => {
-        let i = x;
-        if(i>element.values.length-1)i=this.dataZoom[index].values.length-1;
-        else if (i < 0) i = 0;
-        let d: number = element.values[i][1];
-        let t = element.values[i][0];
-        let date = new Date(t).toLocaleDateString("fr", { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' });
-        d3.selectAll('#tooltip-date1' + index)
-          .text(date);
-        d3.selectAll('#tooltip-date2' + index)
-          .text(this.roundDecimal(d,2));
-      });
-      this.tooltip.attr("transform", "translate(" + this.scaleX(t) + "," + this.scaleY(d) + ")");
     }
     
   }
+
 
   /**
    * Hide the tooltips when the mouse leave the svg 
