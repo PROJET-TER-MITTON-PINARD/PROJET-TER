@@ -122,7 +122,7 @@ export class TimelineComponent implements OnInit {
       else this.showInfo(event);
     })
     .on("mouseleave", () => { this.currentTimeSelected = false; this.hideInfo() })
-    .on("wheel", (event: WheelEvent) => this.activeZoom(event))
+    .on("wheel", (event: WheelEvent) => {if(this.data.length!=0)this.activeZoom(event)})
     .on("mouseup", () => this.currentTimeSelected=false)
     .on("mouseover", (event: MouseEvent) => event.preventDefault());
   }
@@ -160,6 +160,7 @@ export class TimelineComponent implements OnInit {
       }
     }
     if(!this.controlColor(element.color)){
+      console.warn("Data with " + element.label + " label, has an unvalid color attribute (" + element.color + "). Replace with the default color (black).");
       element.color="black";
     } 
   }
@@ -557,23 +558,22 @@ export class TimelineComponent implements OnInit {
    * @param {MouseEvent} event 
    */
   private showInfo(event: MouseEvent): void{
-    console.log(this.dataZoom.length);
     if (this.dataZoom[0] != undefined && this.dataZoom.length <2) {
       var d: number=0;
       var t: number=0;
-        let time: number[] = [];
-        this.dataZoom[0].values.forEach((element) => time.push(element[0]));
-        let x0 = this.scaleX.invert(event.clientX - this.margin.left).getTime();
-        let x = d3.bisectRight(time, x0);
-        if(x>this.dataZoom[0].values.length-1)x=this.dataZoom[0].values.length-1;
-        else if (x < 0) x = 0;
-         d  = this.dataZoom[0].values[x][1];
-         t = this.dataZoom[0].values[x][0];
-        let date = new Date(t).toLocaleDateString("fr", { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' });
-        d3.selectAll('#tooltip-date1')
-          .text(date);
-        d3.selectAll('#tooltip-date2')
-          .text(this.roundDecimal(d, 2));
+      let time: number[] = [];
+      this.dataZoom[0].values.forEach((element) => time.push(element[0]));
+      let x0 = this.scaleX.invert(event.clientX - this.margin.left).getTime();
+      let x = d3.bisectRight(time, x0);
+      if(x>this.dataZoom[0].values.length-1)x=this.dataZoom[0].values.length-1;
+      else if (x < 0) x = 0;
+        d  = this.dataZoom[0].values[x][1];
+        t = this.dataZoom[0].values[x][0];
+      let date = new Date(t).toLocaleDateString("fr", { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' });
+      d3.selectAll('#tooltip-date1')
+        .text(date);
+      d3.selectAll('#tooltip-date2')
+        .text(this.roundDecimal(d, 2));
       this.tooltip.style("display","block");
       this.tooltip.style("opacity", 100);
       this.tooltip.attr("transform", "translate(" + this.scaleX(t) + "," + this.scaleY(d) + ")");
@@ -589,9 +589,7 @@ export class TimelineComponent implements OnInit {
         }
       }
     }
-    
   }
-
 
   /**
    * Hide the tooltips when the mouse leave the svg 
@@ -675,7 +673,12 @@ export class TimelineComponent implements OnInit {
     }
   }
 
-  private controlColor(color: string){
+  /**
+   * Control the color based on css-colors-name and hex-color-code
+   * @param {string} color 
+   * @returns false if the param color isn't a css-colors-name or a valid hex-color-code
+   */
+  private controlColor(color: string):boolean{
     let s = new Option().style;
     s.color = color;
     return s.color!="";
