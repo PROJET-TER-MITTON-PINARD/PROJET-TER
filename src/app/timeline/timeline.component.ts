@@ -614,9 +614,9 @@ export class TimelineComponent implements OnInit {
       }
       let pos = this.scaleX.invert(event.clientX-this.margin.left).getTime();
       let lengthLocalTime = this.lengthTime / Math.pow(1.5,this.idZoom);
-      let minLocalTime = (lastMinLocalTime-pos)*(lengthLocalTime/lastLengthLocalTime) + pos;
-      this.range = this.controlRange(minLocalTime,lengthLocalTime);
-      if(lengthLocalTime>10000){
+      if(lengthLocalTime>200){
+        let minLocalTime = (lastMinLocalTime-pos)*(lengthLocalTime/lastLengthLocalTime) + pos;
+        this.range = this.controlRange(minLocalTime,lengthLocalTime);
         this.updateDataZoom(this.range[0],this.range[1]);
         this.updateSvg(this.range[0],this.range[1]);
         this.rangeChange.emit(this.range);
